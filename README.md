@@ -8,6 +8,7 @@ Zadaniem aplikacji będzie wyszukanie użytkownikowi najtańszego lotu ograniczo
 
 W projekcie planujemy użyć:
 - https://pkg.go.dev/github.com/PuerkitoBio/goquery
+- https://pkg.go.dev/github.com/chromedp/chromedp
 - https://pkg.go.dev/encoding/json
 - https://pkg.go.dev/net/http
 - https://pkg.go.dev/time
