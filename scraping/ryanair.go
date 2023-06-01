@@ -11,14 +11,7 @@ import (
 
 func RyanairAirports() map[string]string {
 	pw, _ := playwright.Run()
-	opts := map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
-		"security.certerrors.permanentOverride":       false,
-		"network.stricttransportsecurity.preloadlist": false,
-		"security.enterprise_roots.enabled":           true}
-	browser, _ := pw.Firefox.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless:         playwright.Bool(true),
-		FirefoxUserPrefs: opts,
-	})
+	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
 	context, _ := browser.NewContext()
 	page, _ := context.NewPage()
 
@@ -52,14 +45,7 @@ func RyanairAirports() map[string]string {
 
 func Ryanair(airports map[string]string) Flights {
 	pw, _ := playwright.Run()
-	opts := map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
-		"security.certerrors.permanentOverride":       false,
-		"network.stricttransportsecurity.preloadlist": false,
-		"security.enterprise_roots.enabled":           true}
-	browser, _ := pw.Firefox.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless:         playwright.Bool(true),
-		FirefoxUserPrefs: opts,
-	})
+	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
 	context, _ := browser.NewContext()
 	page, _ := context.NewPage()
 

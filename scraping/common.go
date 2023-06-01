@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/playwright-community/playwright-go"
 )
 
 type Flight struct {
@@ -88,4 +90,12 @@ func SaveToFile(filename, content string) {
 	}
 
 	fmt.Println("done")
+}
+
+var CustomFirefoxOptions = playwright.BrowserTypeLaunchOptions{
+	Headless: playwright.Bool(true),
+	FirefoxUserPrefs: map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
+		"security.certerrors.permanentOverride":       false,
+		"network.stricttransportsecurity.preloadlist": false,
+		"security.enterprise_roots.enabled":           true},
 }

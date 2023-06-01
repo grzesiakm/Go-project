@@ -13,14 +13,7 @@ import (
 
 func LotAirports() map[string]string {
 	pw, _ := playwright.Run()
-	opts := map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
-		"security.certerrors.permanentOverride":       false,
-		"network.stricttransportsecurity.preloadlist": false,
-		"security.enterprise_roots.enabled":           true}
-	browser, _ := pw.Firefox.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless:         playwright.Bool(true),
-		FirefoxUserPrefs: opts,
-	})
+	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
 	context, _ := browser.NewContext()
 	page, _ := context.NewPage()
 	url := "https://www.lot.com/us/en"
@@ -60,14 +53,7 @@ func GetDateString(inputDate string) string {
 
 func Lot(airports map[string]string) Flights {
 	pw, _ := playwright.Run()
-	opts := map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
-		"security.certerrors.permanentOverride":       false,
-		"network.stricttransportsecurity.preloadlist": false,
-		"security.enterprise_roots.enabled":           true}
-	browser, _ := pw.Firefox.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless:         playwright.Bool(true),
-		FirefoxUserPrefs: opts,
-	})
+	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
 	context, _ := browser.NewContext()
 	page, _ := context.NewPage()
 	url := "https://www.lot.com/us/en"
