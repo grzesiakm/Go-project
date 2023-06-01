@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -34,9 +35,11 @@ func RyanairAirports() map[string]string {
 	doc.Find("fsw-airport-item").Each(func(i int, s *goquery.Selection) {
 		airportElement := s.Find("[data-ref='airport-item__name']")
 		airport := airportElement.Text()
+		re := regexp.MustCompile(`^(\s+)|(\s+)$`)
+		airportMatch := re.ReplaceAllLiteralString(airport, "")
 		airportSymbol, _ := airportElement.Attr("data-id")
 
-		airports[airportSymbol] = airport
+		airports[airportSymbol] = airportMatch
 	})
 
 	fmt.Println(airports)

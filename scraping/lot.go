@@ -36,7 +36,7 @@ func LotAirports() map[string]string {
 
 	doc.Find("lot-option").Each(func(i int, s *goquery.Selection) {
 		airportLabel := s.Find(".airport-select__option-label").Text()
-		re := regexp.MustCompile(`(.*) \((.*)\)`)
+		re := regexp.MustCompile(`\s*(.*) \((.*)\)`)
 		airportLabelMatch := re.FindStringSubmatch(airportLabel)
 
 		airports[airportLabelMatch[2]] = airportLabelMatch[1]
