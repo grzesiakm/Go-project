@@ -1,37 +1,34 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/chromedp/chromedp"
+	"github.com/playwright-community/playwright-go"
 )
 
 func RyanairAirports() map[string]string {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:], NewChromeOpts...)
-	ctx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
-	ctx, cancel := chromedp.NewContext(
-		ctx,
-		// chromedp.WithDebugf(log.Printf),
-	)
-	defer cancel()
+	pw, _ := playwright.Run()
+	opts := map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
+		"security.certerrors.permanentOverride":       false,
+		"network.stricttransportsecurity.preloadlist": false,
+		"security.enterprise_roots.enabled":           true}
+	browser, _ := pw.Firefox.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless:         playwright.Bool(true),
+		FirefoxUserPrefs: opts,
+	})
+	context, _ := browser.NewContext()
+	page, _ := context.NewPage()
 
 	url := "https://www.ryanair.com/us/en"
-	var res string
-	err := chromedp.Run(ctx,
-		chromedp.Navigate(url),
-		chromedp.Click(".cookie-popup-with-overlay__button", chromedp.ByQuery),
-
-		chromedp.Click("#input-button__destination", chromedp.ByQuery),
-		chromedp.OuterHTML(".list__airports-scrollable-container", &res, chromedp.ByQuery),
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	_, _ = page.Goto(url)
+	page.Click(".cookie-popup-with-overlay__button")
+	page.Click("#input-button__destination")
+	res, _ := page.InnerHTML(".list__airports-scrollable-container")
+	browser.Close()
+	pw.Stop()
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 
@@ -54,13 +51,17 @@ func RyanairAirports() map[string]string {
 }
 
 func Ryanair(airports map[string]string) Flights {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:], NewChromeOpts...)
-	ctx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
-	ctx, cancel := chromedp.NewContext(
-		ctx,
-		// chromedp.WithDebugf(log.Printf),
-	)
-	defer cancel()
+	pw, _ := playwright.Run()
+	opts := map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
+		"security.certerrors.permanentOverride":       false,
+		"network.stricttransportsecurity.preloadlist": false,
+		"security.enterprise_roots.enabled":           true}
+	browser, _ := pw.Firefox.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless:         playwright.Bool(true),
+		FirefoxUserPrefs: opts,
+	})
+	context, _ := browser.NewContext()
+	page, _ := context.NewPage()
 
 	url := "https://www.ryanair.com/us/en"
 	from := "Szczecin"
@@ -75,17 +76,11 @@ func Ryanair(airports map[string]string) Flights {
 
 	fmt.Println(urlQuery)
 
-	var res string
-	err := chromedp.Run(ctx,
-		chromedp.Navigate(urlQuery),
-
-		chromedp.Click(".cookie-popup-with-overlay__button", chromedp.ByQuery),
-		chromedp.OuterHTML(".journeys-wrapper", &res, chromedp.ByQuery),
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	_, _ = page.Goto(urlQuery)
+	page.Click(".cookie-popup-with-overlay__button")
+	res, _ := page.InnerHTML(".journeys-wrapper")
+	browser.Close()
+	pw.Stop()
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"regexp"
@@ -9,29 +8,24 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/chromedp/cdproto/network"
-	"github.com/chromedp/chromedp"
+	"github.com/playwright-community/playwright-go"
 )
 
 func EasyjetAirports() map[string]string {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:3], NewChromeOpts...)
-	ctx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
-	ctx, cancel := chromedp.NewContext(
-		ctx,
-		// chromedp.WithDebugf(log.Printf),
-	)
-	defer cancel()
-
+	pw, _ := playwright.Run()
+	opts := map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
+		"security.certerrors.permanentOverride":       false,
+		"network.stricttransportsecurity.preloadlist": false,
+		"security.enterprise_roots.enabled":           true}
+	browser, _ := pw.Firefox.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless:         playwright.Bool(true),
+		FirefoxUserPrefs: opts,
+	})
+	context, _ := browser.NewContext()
+	page, _ := context.NewPage()
 	url := "https://www.easyjet.com/en/routemap"
-	var res string
-	err := chromedp.Run(ctx,
-		chromedp.Navigate(url),
-		chromedp.OuterHTML("[data-title='Flights']", &res, chromedp.ByQuery),
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	_, _ = page.Goto(url)
+	res, _ := page.InnerHTML("[data-title='Flights']")
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 
@@ -41,10 +35,8 @@ func EasyjetAirports() map[string]string {
 
 	frameSrc, _ := doc.Find("iframe").Attr("src")
 
-	err = chromedp.Run(ctx,
-		chromedp.Navigate(frameSrc),
-		chromedp.OuterHTML("#acOriginAirport_ddl", &res, chromedp.ByQuery),
-	)
+	_, _ = page.Goto(frameSrc)
+	res, _ = page.InnerHTML("#acOriginAirport_ddl")
 
 	doc, err = goquery.NewDocumentFromReader(strings.NewReader(res))
 
@@ -70,13 +62,17 @@ func EasyjetAirports() map[string]string {
 }
 
 func Easyjet(airports map[string]string) Flights {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:3], NewChromeOpts...)
-	ctx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
-	ctx, cancel := chromedp.NewContext(
-		ctx,
-		chromedp.WithDebugf(log.Printf),
-	)
-	defer cancel()
+	pw, _ := playwright.Run()
+	opts := map[string]interface{}{"security.insecure_field_warning.contextual.enabled": false,
+		"security.certerrors.permanentOverride":       false,
+		"network.stricttransportsecurity.preloadlist": false,
+		"security.enterprise_roots.enabled":           true}
+	browser, _ := pw.Firefox.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless:         playwright.Bool(true),
+		FirefoxUserPrefs: opts,
+	})
+	context, _ := browser.NewContext()
+	page, _ := context.NewPage()
 
 	url := "https://www.easyjet.com"
 	from := "Bari"
@@ -91,22 +87,13 @@ func Easyjet(airports map[string]string) Flights {
 
 	fmt.Println(urlQuery)
 
-	var res string
-	err := chromedp.Run(ctx,
-		network.EnableReportingAPI(true),
-		chromedp.Navigate(urlQuery),
-
-		chromedp.Click("#ensCloseBanner", chromedp.ByQuery),
-		chromedp.Click(".drawer-button > button", chromedp.ByQuery),
-		chromedp.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div", chromedp.ByQuery),
-		chromedp.Sleep(time.Second),
-		chromedp.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div", chromedp.ByQuery),
-		chromedp.OuterHTML("body", &res, chromedp.ByQuery),
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	_, _ = page.Goto(urlQuery)
+	page.Click("#ensCloseBanner")
+	page.Click(".drawer-button > button")
+	page.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div")
+	time.Sleep(time.Second)
+	page.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div")
+	res, _ := page.InnerHTML("body")
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 
