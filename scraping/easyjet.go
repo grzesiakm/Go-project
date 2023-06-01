@@ -76,9 +76,9 @@ func Easyjet(airports map[string]string) Flights {
 	_, _ = page.Goto(urlQuery)
 	page.Click("#ensCloseBanner")
 	page.Click(".drawer-button > button")
-	page.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div")
+	page.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
 	time.Sleep(time.Second)
-	page.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div")
+	page.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
 	res, _ := page.InnerHTML("body")
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
