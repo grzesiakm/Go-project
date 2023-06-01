@@ -5,7 +5,13 @@ import "fmt"
 // go run .
 
 func main() {
-	wizzTest()
+	fmt.Println("WizzAirports")
+	//wizzTest()
+	test()
+	//wizzAirports := WizzairAirports()
+	//fmt.Println("Wizz")
+	//wizzFlights := Wizzair(wizzAirports)
+
 	fmt.Println("LotAirports")
 	lotAirports := LotAirports()
 	fmt.Println("Lot")
@@ -25,4 +31,5 @@ func main() {
 	fmt.Println(lotFlights.ToString())
 	fmt.Println(ryanairFlights.ToString())
 	fmt.Println(easyjetFlights.ToString())
+	//fmt.Println(wizzFlights.ToString())
 }
