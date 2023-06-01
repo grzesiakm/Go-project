@@ -12,8 +12,15 @@ W projekcie planujemy użyć:
 - https://pkg.go.dev/encoding/json
 - https://pkg.go.dev/net/http
 - https://pkg.go.dev/time
+
+## Jak uruchomić projekt?
+
+W katalogu **scraping** wykonaj poniższe komendy:
+- `go get github.com/playwright-community/playwright-go`
+- `go run github.com/playwright-community/playwright-go/cmd/playwright install --with-deps`
+- `go run .`
  
- ## Zespół
+## Zespół
 
 - Marta Grzesiak
 - Aleksandra Kuś
