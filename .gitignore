@@ -19,3 +19,10 @@
 
 # Go workspace file
 go.work
+
+# IntelliJ
+.idea
+
+# Other
+*.xml
+*.iml
