@@ -5,7 +5,7 @@ import "fmt"
 // go run .
 
 func main() {
-
+	wizzTest()
 	fmt.Println("LotAirports")
 	lotAirports := LotAirports()
 	fmt.Println("Lot")
