@@ -11,10 +11,11 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func LotAirports() map[string]string {
+func LotAirports(useragent string) map[string]string {
+	fmt.Println(useragent)
 	pw, _ := playwright.Run()
 	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext()
+	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 	page, _ := context.NewPage()
 	url := "https://www.lot.com/us/en"
 	_, _ = page.Goto(url)
@@ -51,10 +52,11 @@ func GetDateString(inputDate string) string {
 	return fmt.Sprintf("%d%02d%d", formatDate.Day(), formatDate.Month(), formatDate.Year())
 }
 
-func Lot(airports map[string]string) Flights {
+func Lot(airports map[string]string, useragent string) Flights {
+	fmt.Println(useragent)
 	pw, _ := playwright.Run()
 	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext()
+	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 	page, _ := context.NewPage()
 	url := "https://www.lot.com/us/en"
 	from := "New York"

@@ -1,28 +1,37 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
 
 // go run .
 
 func main() {
+	rand.Seed(time.Now().Unix())
+	useragents := UserAgents()
 
 	fmt.Println("LotAirports")
-	lotAirports := LotAirports()
+	lotAirports := LotAirports(useragents[rand.Intn(len(useragents))])
 	fmt.Println("Lot")
-	lotFlights := Lot(lotAirports)
+	lotFlights := Lot(lotAirports, useragents[rand.Intn(len(useragents))])
 
 	fmt.Println("RyanairAirports")
-	ryanairAirports := RyanairAirports()
+	ryanairAirports := RyanairAirports(useragents[rand.Intn(len(useragents))])
 	fmt.Println("Ryanair")
-	ryanairFlights := Ryanair(ryanairAirports)
+	ryanairFlights := Ryanair(ryanairAirports, useragents[rand.Intn(len(useragents))])
 
 	fmt.Println("EasyjetAirports")
-	easyjetAirports := EasyjetAirports()
+	easyjetAirports := EasyjetAirports(useragents[rand.Intn(len(useragents))])
 	fmt.Println("Easyjet")
-	easyjetFlights := Easyjet(easyjetAirports)
+	easyjetFlights := Easyjet(easyjetAirports, useragents[rand.Intn(len(useragents))])
 
 	fmt.Println("Results")
+	fmt.Println("Lot")
 	fmt.Println(lotFlights.ToString())
+	fmt.Println("Ryanair")
 	fmt.Println(ryanairFlights.ToString())
+	fmt.Println("Easyjet")
 	fmt.Println(easyjetFlights.ToString())
 }

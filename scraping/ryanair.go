@@ -10,10 +10,11 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func RyanairAirports() map[string]string {
+func RyanairAirports(useragent string) map[string]string {
+	fmt.Println(useragent)
 	pw, _ := playwright.Run()
 	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext()
+	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 	page, _ := context.NewPage()
 
 	url := "https://www.ryanair.com/us/en"
@@ -46,10 +47,11 @@ func RyanairAirports() map[string]string {
 	return airports
 }
 
-func Ryanair(airports map[string]string) Flights {
+func Ryanair(airports map[string]string, useragent string) Flights {
+	fmt.Println(useragent)
 	pw, _ := playwright.Run()
 	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext()
+	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 	page, _ := context.NewPage()
 
 	url := "https://www.ryanair.com/us/en"

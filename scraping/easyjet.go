@@ -11,10 +11,11 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func EasyjetAirports() map[string]string {
+func EasyjetAirports(useragent string) map[string]string {
+	fmt.Println(useragent)
 	pw, _ := playwright.Run()
 	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext()
+	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 	page, _ := context.NewPage()
 	url := "https://www.easyjet.com/en/routemap"
 	_, _ = page.Goto(url)
@@ -54,10 +55,11 @@ func EasyjetAirports() map[string]string {
 	return airports
 }
 
-func Easyjet(airports map[string]string) Flights {
+func Easyjet(airports map[string]string, useragent string) Flights {
+	fmt.Println(useragent)
 	pw, _ := playwright.Run()
 	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext()
+	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 	page, _ := context.NewPage()
 
 	url := "https://www.easyjet.com"
