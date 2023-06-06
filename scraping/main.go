@@ -32,6 +32,11 @@ func main() {
 	fmt.Println("Norwegian")
 	norwegianFlights := Norwegian(norwegianAirports, useragents[rand.Intn(len(useragents))])
 
+	fmt.Println("LufthansaAirports")
+	lufthansaAirports := LufthansaAirports(useragents[rand.Intn(len(useragents))])
+	fmt.Println("Lufthansa")
+	lufthansaFlights := Lufthansa(lufthansaAirports, useragents[rand.Intn(len(useragents))])
+
 	fmt.Println("Results")
 	fmt.Println("Lot")
 	fmt.Println(lotFlights.ToString())
@@ -41,4 +46,6 @@ func main() {
 	fmt.Println(easyjetFlights.ToString())
 	fmt.Println("Norwegian")
 	fmt.Println(norwegianFlights.ToString())
+	fmt.Println("Lufthansa")
+	fmt.Println(lufthansaFlights.ToString())
 }
