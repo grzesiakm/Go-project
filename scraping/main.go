@@ -1,12 +1,13 @@
 package main
 
 import (
+	"github.com/playwright-community/playwright-go"
+	"html/template"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"time"
-
-	"github.com/playwright-community/playwright-go"
 )
 
 func MergeMaps(m1 map[string]string, m2 map[string]string) map[string]string {
@@ -98,7 +99,11 @@ const (
 	RyanairAirline   string = "Ryanair"
 )
 
+var tmpl *template.Template
+var mux = http.NewServeMux()
+
 func init() {
+	tmpl = template.Must(template.ParseGlob("templates/*.gohtml"))
 	Info = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	Warning = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 	Error = log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -107,19 +112,48 @@ func init() {
 // go run .
 
 func main() {
-	Info.Println("Initializing the application")
+	//Info.Println("Initializing the application")
+	//rand.Seed(time.Now().Unix())
+	//pw, _ := playwright.Run()
+	//browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
+	//useragents, airports := GetStartInfo(browser)
+
+	http.HandleFunc("/", index)
+	http.HandleFunc("/search", search)
+	log.Fatal(http.ListenAndServe(":9091", mux))
+	//
+	//from := "Aalborg"
+	//to := "Zagreb"
+	//fromDate := "2023-06-21"
+	//toDate := "2023-06-26"
+	////Info.Println("Looking for flights from", from, "to", to, "date", fromDate, "to", toDate)
+	//
+	//flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
+	//Info.Println("Found flights from", from, "to", to, "date", fromDate, "to", toDate, "\n", flights.ToString())
+	//pw.Stop()
+}
+
+func index(writer http.ResponseWriter, _ *http.Request) {
+	log.Fatal(tmpl.ExecuteTemplate(writer, "index.gohtml", mux))
+}
+
+func search(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != "post" {
+		http.Redirect(writer, request, "/", http.StatusSeeOther)
+		return
+	}
+
+	from := request.FormValue("departure")
+	to := request.FormValue("arrival")
+	fromDate := request.FormValue("departureTime")
+	toDate := request.FormValue("arrivalTime")
+
 	rand.Seed(time.Now().Unix())
 	pw, _ := playwright.Run()
 	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
 	useragents, airports := GetStartInfo(browser)
 
-	from := "Aalborg"
-	to := "Zagreb"
-	fromDate := "2023-06-21"
-	toDate := "2023-06-26"
-	Info.Println("Looking for flights from", from, "to", to, "date", fromDate, "to", toDate)
-
 	flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
-	Info.Println("Found flights from", from, "to", to, "date", fromDate, "to", toDate, "\n", flights.ToString())
-	pw.Stop()
+
+	log.Fatal(tmpl.ExecuteTemplate(writer, "flights.gohtml", flights))
 }
