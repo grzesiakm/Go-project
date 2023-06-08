@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
@@ -10,19 +8,40 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func LufthansaAirports(useragent string) map[string]string {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
-
+func LufthansaAirports(page playwright.Page) map[string]string {
+	Info.Println("Looking for lufthansa airports")
+	airports := make(map[string]string)
 	url := "https://www.lufthansa.com/us/en/flights"
-	_, _ = page.Goto(url)
-	page.Click("#cm-acceptAll")
-	page.Click("[placeholder='From']")
-	page.Click(".autocomplete-airport .input-icon")
-	page.Click(".df-result-wrapper .btn-secondary")
+
+	_, err := page.Goto(url)
+	if err != nil {
+		Error.Println("Couldn't open the page,", err)
+		return airports
+	}
+
+	err = page.Click("#cm-acceptAll")
+	if err != nil {
+		Error.Println("Couldn't find the cm-acceptAll element,", err)
+		return airports
+	}
+
+	err = page.Click("[placeholder='From']")
+	if err != nil {
+		Error.Println("Couldn't find the From element,", err)
+		return airports
+	}
+
+	err = page.Click(".autocomplete-airport .input-icon")
+	if err != nil {
+		Error.Println("Couldn't find the input-icon element,", err)
+		return airports
+	}
+
+	err = page.Click(".df-result-wrapper .btn-secondary")
+	if err != nil {
+		Error.Println("Couldn't find the btn-secondary element,", err)
+		return airports
+	}
 
 	var timeout = float64(1000)
 	for {
@@ -32,17 +51,17 @@ func LufthansaAirports(useragent string) map[string]string {
 		}
 	}
 nextPart:
-	res, _ := page.InnerHTML(".df-result-section > ol")
-	browser.Close()
-	pw.Stop()
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
+	res, err := page.InnerHTML(".df-result-section > ol")
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't find the df-result-section element,", err)
+		return airports
 	}
 
-	airports := make(map[string]string)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		Error.Println("Couldn't create the goquery Document,", err)
+		return airports
+	}
 
 	doc.Find("li").Each(func(i int, s *goquery.Selection) {
 		airport := s.Find(".city-name").Text()
@@ -52,49 +71,90 @@ nextPart:
 
 		airports[strings.ToUpper(airportSymbolMatch[1])] = strings.TrimSpace(airport)
 	})
-
-	fmt.Println(airports)
+	Info.Println("Found lufthansa airports:", airports)
 	return airports
 }
 
-func Lufthansa(airports map[string]string, useragent string) Flights {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
-
-	url := "https://www.lufthansa.com/us/en"
-	from := "Frankfurt"
-	to := "Aarhus"
-	fromDate := "2023-06-07"
-	toDate := "2023-06-20"
-
-	fromSymbol := KeyByValue(airports, from)
-	toSymbol := KeyByValue(airports, to)
-
-	urlQuery := url + "/flight-search?OriginCode=" + fromSymbol + "&DestinationCode=" + toSymbol + "&DepartureDate=" + fromDate + "T18%3A07%3A58&ReturnDate=" + toDate + "T18%3A07%3A58&Cabin=E&PaxAdults=1"
-	fmt.Println(urlQuery)
-
-	_, _ = page.Goto(urlQuery)
-	page.Click("#cm-acceptAll")
-	page.Click(".form-btn-section .btn-primary")
-	page.Click(".sorting-filtering-area")
-	res1, _ := page.InnerHTML(".mat-accordion")
-	page.Click(".mat-accordion .flight-card-button-section > button:nth-child(1)")
-	page.Click(".flight-fares ul > li:nth-child(1) i")
-	page.Click((".confirm-fares-button"))
-	page.Click(".sorting-filtering-area")
-	res2, _ := page.InnerHTML(".mat-accordion")
-	browser.Close()
-	pw.Stop()
+func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
+	Info.Println("Looking for lufthansa flights")
 	flight := make([]Flight, 0)
+	fromAirport := airports[fromSymbol]
+	toAirport := airports[toSymbol]
+	if !(SliceContains(fromAirport, LufthansaAirline) && SliceContains(toAirport, LufthansaAirline)) {
+		Warning.Println("Lufthansa doesn't fly between", fromSymbol, "and", toSymbol)
+		return flight
+	}
+	url := "https://www.lufthansa.com/us/en"
+
+	urlQuery := url + "/flight-search?OriginCode=" + fromSymbol + "&DestinationCode=" + toSymbol + "&DepartureDate=" +
+		fromDate + "T18%3A07%3A58&ReturnDate=" + toDate + "T18%3A07%3A58&Cabin=E&PaxAdults=1"
+
+	_, err := page.Goto(urlQuery)
+	if err != nil {
+		Error.Println("Couldn't open the page,", err)
+		return flight
+	}
+
+	err = page.Click("#cm-acceptAll")
+	if err != nil {
+		Error.Println("Couldn't find the cm-acceptAll element,", err)
+		return flight
+	}
+
+	err = page.Click(".form-btn-section .btn-primary")
+	if err != nil {
+		Error.Println("Couldn't find the btn-primary element,", err)
+		return flight
+	}
+
+	err = page.Click(".sorting-filtering-area")
+	if err != nil {
+		Error.Println("Couldn't find the sorting-filtering-area element,", err)
+		return flight
+	}
+
+	res1, err := page.InnerHTML(".mat-accordion")
+	if err != nil {
+		Error.Println("Couldn't find the mat-accordion element,", err)
+		return flight
+	}
+
+	err = page.Click(".mat-accordion .flight-card-button-section > button:nth-child(1)")
+	if err != nil {
+		Error.Println("Couldn't find the flight-card-button-section element,", err)
+		return flight
+	}
+
+	err = page.Click(".flight-fares ul > li:nth-child(1) i")
+	if err != nil {
+		Error.Println("Couldn't find the flight-fares element,", err)
+		return flight
+	}
+
+	err = page.Click((".confirm-fares-button"))
+	if err != nil {
+		Error.Println("Couldn't find the confirm-fares-button element,", err)
+		return flight
+	}
+
+	err = page.Click(".sorting-filtering-area")
+	if err != nil {
+		Error.Println("Couldn't find the sorting-filtering-area element,", err)
+		return flight
+	}
+
+	res2, err := page.InnerHTML(".mat-accordion")
+	if err != nil {
+		Error.Println("Couldn't find the mat-accordion element,", err)
+		return flight
+	}
+
 	resSlice := []string{res1, res2}
 	for _, res := range resSlice {
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
 		if err != nil {
-			log.Fatal(err)
+			Error.Println("Couldn't create the goquery Document,", err)
+			return flight
 		}
 
 		doc.Find(".upsell-premium-row-pres-container").Each(func(i int, s *goquery.Selection) {
@@ -108,14 +168,12 @@ func Lufthansa(airports map[string]string, useragent string) Flights {
 			re := regexp.MustCompile(`\d*.\d{2}`)
 			priceMatch := re.FindStringSubmatch(price)
 
-			f := Flight{Departure: airports[strings.TrimSpace(departure)], Arrival: airports[strings.TrimSpace(arrival)], DepartureTime: strings.TrimSpace(departureTime),
-				ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace("none"), Duration: strings.TrimSpace(duration), Price: priceMatch[0]}
+			f := Flight{Airline: LufthansaAirline, Departure: airports[strings.TrimSpace(departure)][0], Arrival: airports[strings.TrimSpace(arrival)][0],
+				DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace("none"),
+				Duration: strings.TrimSpace(duration), Price: priceMatch[0]}
 
 			flight = append(flight, f)
 		})
 	}
-
-	var flights Flights
-	flights.Flights = flight
-	return flights
+	return flight
 }

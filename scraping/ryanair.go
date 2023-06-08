@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
@@ -10,28 +8,40 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func RyanairAirports(useragent string) map[string]string {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
-
+func RyanairAirports(page playwright.Page) map[string]string {
+	Info.Println("Looking for ryanair airports")
+	airports := make(map[string]string)
 	url := "https://www.ryanair.com/us/en"
-	_, _ = page.Goto(url)
-	page.Click(".cookie-popup-with-overlay__button")
-	page.Click("#input-button__destination")
-	res, _ := page.InnerHTML(".list__airports-scrollable-container")
-	browser.Close()
-	pw.Stop()
 
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
+	_, err := page.Goto(url)
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't open the page,", err)
+		return airports
 	}
 
-	airports := make(map[string]string)
+	err = page.Click(".cookie-popup-with-overlay__button")
+	if err != nil {
+		Error.Println("Couldn't find the cookie-popup-with-overlay__button element,", err)
+		return airports
+	}
+
+	err = page.Click("#input-button__destination")
+	if err != nil {
+		Error.Println("Couldn't find the input-button__destination element,", err)
+		return airports
+	}
+
+	res, err := page.InnerHTML(".list__airports-scrollable-container")
+	if err != nil {
+		Error.Println("Couldn't find the list__airports-scrollable-container element,", err)
+		return airports
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		Error.Println("Couldn't create the goquery Document,", err)
+		return airports
+	}
 
 	doc.Find("fsw-airport-item").Each(func(i int, s *goquery.Selection) {
 		airportElement := s.Find("[data-ref='airport-item__name']")
@@ -42,44 +52,49 @@ func RyanairAirports(useragent string) map[string]string {
 
 		airports[airportSymbol] = airportMatch
 	})
-
-	fmt.Println(airports)
+	Info.Println("Found ryanair airports:", airports)
 	return airports
 }
 
-func Ryanair(airports map[string]string, useragent string) Flights {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
-
+func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
+	Info.Println("Looking for ryanair flights")
+	flight := make([]Flight, 0)
+	fromAirport := airports[fromSymbol]
+	toAirport := airports[toSymbol]
+	if !(SliceContains(fromAirport, RyanairAirline) && SliceContains(toAirport, RyanairAirline)) {
+		Warning.Println("Ryanair doesn't fly between", fromSymbol, "and", toSymbol)
+		return flight
+	}
 	url := "https://www.ryanair.com/us/en"
-	from := "Szczecin"
-	to := "Dublin"
-	fromDate := "2023-06-21"
-	toDate := "2023-06-26"
 
-	fromSymbol := KeyByValue(airports, from)
-	toSymbol := KeyByValue(airports, to)
+	urlQuery := url + "/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=" +
+		fromDate + "&dateIn=" + toDate + "&isConnectedFlight=false&isReturn=true&discount=0&promoCode=&originIata=" +
+		fromSymbol + "&destinationIata=" + toSymbol + "&tpAdults=1&tpTeens=0&tpChildren=0&tpInfants=0&tpStartDate=" +
+		fromDate + "&tpEndDate=" + toDate + "&tpDiscount=0&tpPromoCode=&tpOriginIata=" + fromSymbol + "&tpDestinationIata=" + toSymbol
 
-	urlQuery := url + "/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=" + fromDate + "&dateIn=" + toDate + "&isConnectedFlight=false&isReturn=true&discount=0&promoCode=&originIata=" + fromSymbol + "&destinationIata=" + toSymbol + "&tpAdults=1&tpTeens=0&tpChildren=0&tpInfants=0&tpStartDate=" + fromDate + "&tpEndDate=" + toDate + "&tpDiscount=0&tpPromoCode=&tpOriginIata=" + fromSymbol + "&tpDestinationIata=" + toSymbol
-
-	fmt.Println(urlQuery)
-
-	_, _ = page.Goto(urlQuery)
-	page.Click(".cookie-popup-with-overlay__button")
-	res, _ := page.InnerHTML(".journeys-wrapper")
-	browser.Close()
-	pw.Stop()
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
+	_, err := page.Goto(urlQuery)
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't open the page,", err)
+		return flight
 	}
 
-	flight := make([]Flight, 0)
+	err = page.Click(".cookie-popup-with-overlay__button")
+	if err != nil {
+		Error.Println("Couldn't find the cookie-popup-with-overlay__button element,", err)
+		return flight
+	}
+
+	res, err := page.InnerHTML(".journeys-wrapper")
+	if err != nil {
+		Error.Println("Couldn't find the journeys-wrapper element,", err)
+		return flight
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		Error.Println("Couldn't create the goquery Document,", err)
+		return flight
+	}
 
 	doc.Find(".flight-card__header").Each(func(i int, s *goquery.Selection) {
 		departure := s.Find("[data-ref='flight-segment.departure'] .flight-info__city").Text()
@@ -90,13 +105,11 @@ func Ryanair(airports map[string]string, useragent string) Flights {
 		duration := s.Find("[data-ref='flight_duration']").Text()
 		price := s.Find(".flight-card-summary__new-value flights-price-simple").Text()
 
-		f := Flight{Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival), DepartureTime: strings.TrimSpace(departureTime),
-			ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number), Duration: strings.TrimSpace(duration), Price: strings.TrimSpace(price)}
+		f := Flight{Airline: RyanairAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
+			DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number),
+			Duration: strings.TrimSpace(duration), Price: strings.TrimSpace(price)}
 
 		flight = append(flight, f)
 	})
-
-	var flights Flights
-	flights.Flights = flight
-	return flights
+	return flight
 }

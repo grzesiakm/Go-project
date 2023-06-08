@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -11,29 +10,42 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func LotAirports(useragent string) map[string]string {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
+func LotAirports(page playwright.Page) map[string]string {
+	Info.Println("Looking for lot airports")
+	airports := make(map[string]string)
 	url := "https://www.lot.com/us/en"
-	_, _ = page.Goto(url)
-	time.Sleep(time.Second)
-	page.Click("#onetrust-accept-btn-handler")
-	time.Sleep(time.Second)
-	page.Click("#airport-select-0 > .airport-select__value")
-	res, _ := page.InnerHTML(".combobox__list-wrapper")
-	browser.Close()
-	pw.Stop()
 
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
+	_, err := page.Goto(url)
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't open the page,", err)
+		return airports
 	}
 
-	airports := make(map[string]string)
+	time.Sleep(time.Second)
+	err = page.Click("#onetrust-accept-btn-handler")
+	if err != nil {
+		Error.Println("Couldn't find the onetrust-accept-btn-handler element,", err)
+		return airports
+	}
+
+	time.Sleep(time.Second)
+	err = page.Click("#airport-select-0 > .airport-select__value")
+	if err != nil {
+		Error.Println("Couldn't find the airport-select__value element,", err)
+		return airports
+	}
+
+	res, err := page.InnerHTML(".combobox__list-wrapper")
+	if err != nil {
+		Error.Println("Couldn't find the combobox__list-wrapper element,", err)
+		return airports
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		Error.Println("Couldn't create the goquery Document,", err)
+		return airports
+	}
 
 	doc.Find("lot-option").Each(func(i int, s *goquery.Selection) {
 		airportLabel := s.Find(".airport-select__option-label").Text()
@@ -42,8 +54,7 @@ func LotAirports(useragent string) map[string]string {
 
 		airports[airportLabelMatch[2]] = airportLabelMatch[1]
 	})
-
-	fmt.Println(airports)
+	Info.Println("Found lot airports:", airports)
 	return airports
 }
 
@@ -52,42 +63,52 @@ func GetDateString(inputDate string) string {
 	return fmt.Sprintf("%d%02d%d", formatDate.Day(), formatDate.Month(), formatDate.Year())
 }
 
-func Lot(airports map[string]string, useragent string) Flights {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
+func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
+	Info.Println("Looking for lot flights")
+	flight := make([]Flight, 0)
+	fromAirport := airports[fromSymbol]
+	toAirport := airports[toSymbol]
+	if !(SliceContains(fromAirport, LotAirline) && SliceContains(toAirport, LotAirline)) {
+		Warning.Println("Lot doesn't fly between", fromSymbol, "and", toSymbol)
+		return flight
+	}
 	url := "https://www.lot.com/us/en"
-	from := "New York"
-	to := "Cairo"
-	fromDate := "2023-08-20"
-	toDate := "2023-08-23"
 
-	fromSymbol := KeyByValue(airports, from)
-	toSymbol := KeyByValue(airports, to)
+	urlQuery := url + "?departureAirport=" + fromSymbol + "&destinationAirport=" + toSymbol + "&departureDate=" +
+		GetDateString(fromDate) + "&class=E&adults=1&returnDate=" + GetDateString(toDate)
 
-	urlQuery := url + "?departureAirport=" + fromSymbol + "&destinationAirport=" + toSymbol + "&departureDate=" + GetDateString(fromDate) + "&class=E&adults=1&returnDate=" + GetDateString(toDate)
-
-	fmt.Println(urlQuery)
-
-	_, _ = page.Goto(urlQuery)
-	time.Sleep(time.Second)
-	page.Click("#onetrust-accept-btn-handler")
-	time.Sleep(time.Second)
-	page.Click(".bookerFlight__submit-button")
-	time.Sleep(time.Second)
-	res, _ := page.InnerHTML("#availability-content")
-	browser.Close()
-	pw.Stop()
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
+	_, err := page.Goto(urlQuery)
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't open the page,", err)
+		return flight
 	}
 
-	flight := make([]Flight, 0)
+	time.Sleep(time.Second)
+	err = page.Click("#onetrust-accept-btn-handler")
+	if err != nil {
+		Error.Println("Couldn't find the onetrust-accept-btn-handler element,", err)
+		return flight
+	}
+
+	time.Sleep(time.Second)
+	err = page.Click(".bookerFlight__submit-button")
+	if err != nil {
+		Error.Println("Couldn't find the bookerFlight__submit-button element,", err)
+		return flight
+	}
+
+	time.Sleep(time.Second)
+	res, err := page.InnerHTML("#availability-content")
+	if err != nil {
+		Error.Println("Couldn't find the availability-content element,", err)
+		return flight
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		Error.Println("Couldn't create the goquery Document,", err)
+		return flight
+	}
 
 	doc.Find(".flights-table-panel__flight__content").Each(func(i int, s *goquery.Selection) {
 		departure := s.Find(".flights-table-panel__flight__content__info__direction__text--departure .flights-table-panel__flight__content__info__direction__text__acronym").Text()
@@ -102,13 +123,11 @@ func Lot(airports map[string]string, useragent string) Flights {
 			departureTimeMatch := re.FindStringSubmatch(departureTime)
 			arrivalTimeMatch := re.FindStringSubmatch(arrivalTime)
 
-			f := Flight{Departure: airports[strings.TrimSpace(departure)], Arrival: airports[strings.TrimSpace(arrival)], DepartureTime: departureTimeMatch[0],
-				ArrivalTime: arrivalTimeMatch[0], Number: strings.Join(strings.Fields(number), ", "), Duration: strings.TrimSpace(duration), Price: strings.Join(strings.Fields(price)[:2], " ")}
+			f := Flight{Airline: LotAirline, Departure: airports[strings.TrimSpace(departure)][0], Arrival: airports[strings.TrimSpace(arrival)][0],
+				DepartureTime: departureTimeMatch[0], ArrivalTime: arrivalTimeMatch[0], Number: strings.Join(strings.Fields(number), ", "),
+				Duration: strings.TrimSpace(duration), Price: strings.Join(strings.Fields(price)[:2], " ")}
 			flight = append(flight, f)
 		}
 	})
-
-	var flights Flights
-	flights.Flights = flight
-	return flights
+	return flight
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -11,28 +10,40 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func NorwegianAirports(useragent string) map[string]string {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
-
+func NorwegianAirports(page playwright.Page) map[string]string {
+	Info.Println("Looking for norwegian airports")
+	airports := make(map[string]string)
 	url := "https://www.norwegian.com/uk/"
-	_, _ = page.Goto(url)
-	page.Click("#nas-cookie-consent-accept-all")
-	page.Click("#nas-airport-select-dropdown-input-0")
-	res, _ := page.InnerHTML("#nas-airport-select-dropdown-results-0")
-	browser.Close()
-	pw.Stop()
 
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
+	_, err := page.Goto(url)
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't open the page,", err)
+		return airports
 	}
 
-	airports := make(map[string]string)
+	err = page.Click("#nas-cookie-consent-accept-all")
+	if err != nil {
+		Error.Println("Couldn't find the nas-cookie-consent-accept-all element,", err)
+		return airports
+	}
+
+	err = page.Click("#nas-airport-select-dropdown-input-0")
+	if err != nil {
+		Error.Println("Couldn't find the nas-airport-select-dropdown-input-0 element,", err)
+		return airports
+	}
+
+	res, err := page.InnerHTML("#nas-airport-select-dropdown-results-0")
+	if err != nil {
+		Error.Println("Couldn't find the nas-airport-select-dropdown-results-0 element,", err)
+		return airports
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		Error.Println("Couldn't create the goquery Document,", err)
+		return airports
+	}
 
 	doc.Find("li").Each(func(i int, s *goquery.Selection) {
 		airportElement := s.Find(".nas-airport-select__name")
@@ -43,8 +54,7 @@ func NorwegianAirports(useragent string) map[string]string {
 			airports[airportMatch[2]] = airportMatch[1]
 		}
 	})
-
-	fmt.Println(airports)
+	Info.Println("Found norwegian airports:", airports)
 	return airports
 }
 
@@ -53,42 +63,46 @@ func GetMonthDayDateString(inputDate string) (string, string) {
 	return fmt.Sprintf("%d%02d", formatDate.Year(), formatDate.Month()), fmt.Sprintf("%02d", formatDate.Day())
 }
 
-func Norwegian(airports map[string]string, useragent string) Flights {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
-
+func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
+	Info.Println("Looking for norwegian flights")
+	flight := make([]Flight, 0)
+	fromAirport := airports[fromSymbol]
+	toAirport := airports[toSymbol]
+	if !(SliceContains(fromAirport, NorwegianAirline) && SliceContains(toAirport, NorwegianAirline)) {
+		Warning.Println("Norwegian doesn't fly between", fromSymbol, "and", toSymbol)
+		return flight
+	}
 	url := "https://www.norwegian.com/uk"
-	from := "Aalborg"
-	to := "Algarve"
-	fromDate := "2023-06-21"
-	toDate := "2023-06-26"
-
-	fromSymbol := KeyByValue(airports, from)
-	toSymbol := KeyByValue(airports, to)
 
 	fromYearMonth, fromDay := GetMonthDayDateString(fromDate)
 	toYearMonth, toDay := GetMonthDayDateString(toDate)
 
-	urlQuery := url + "/ipc/availability/avaday?AdultCount=1&A_City=" + toSymbol + "&D_City=" + fromSymbol + "&D_Month=" + fromYearMonth + "&D_Day=" + fromDay + "&R_Month=" + toYearMonth + "&R_Day=" + toDay + "&IncludeTransit=true&TripType=2"
+	urlQuery := url + "/ipc/availability/avaday?AdultCount=1&A_City=" + toSymbol + "&D_City=" +
+		fromSymbol + "&D_Month=" + fromYearMonth + "&D_Day=" + fromDay + "&R_Month=" + toYearMonth + "&R_Day=" + toDay + "&IncludeTransit=true&TripType=2"
 
-	fmt.Println(urlQuery)
-
-	_, _ = page.Goto(urlQuery)
-	page.Click(".cookie-consent__accept-all-button")
-	res, _ := page.InnerHTML(".sectioncontainer")
-	browser.Close()
-	pw.Stop()
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
+	_, err := page.Goto(urlQuery)
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't open the page,", err)
+		return flight
 	}
 
-	flight := make([]Flight, 0)
+	err = page.Click(".cookie-consent__accept-all-button")
+	if err != nil {
+		Error.Println("Couldn't find the cookie-consent__accept-all-button element,", err)
+		return flight
+	}
+
+	res, err := page.InnerHTML(".sectioncontainer")
+	if err != nil {
+		Error.Println("Couldn't find the sectioncontainer element,", err)
+		return flight
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		Error.Println("Couldn't create the goquery Document,", err)
+		return flight
+	}
 
 	doc.Find(".rowinfo1").Each(func(i int, s *goquery.Selection) {
 		rowinfo2 := s.Next()
@@ -104,13 +118,11 @@ func Norwegian(airports map[string]string, useragent string) Flights {
 		durationMatch := re.FindStringSubmatch(duration)
 		price := s.Find(".standardlowfare [title='GBP']").Text()
 
-		f := Flight{Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival), DepartureTime: strings.TrimSpace(departureTime),
-			ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.Join(numberMatch[:], ", "), Duration: durationMatch[1], Price: strings.TrimSpace(price)}
+		f := Flight{Airline: NorwegianAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
+			DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.Join(numberMatch[:], ", "),
+			Duration: durationMatch[1], Price: strings.TrimSpace(price)}
 
 		flight = append(flight, f)
 	})
-
-	var flights Flights
-	flights.Flights = flight
-	return flights
+	return flight
 }
