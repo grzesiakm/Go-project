@@ -20,10 +20,8 @@ func MergeMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 	return merged
 }
 
-func GetStartInfo() ([]string, map[string][]string) {
+func GetStartInfo(browser playwright.Browser) ([]string, map[string][]string) {
 	Info.Println("Starting playwright")
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
 	useragents := UserAgents(browser)
 
 	useragent := useragents[rand.Intn(len(useragents))]
@@ -35,8 +33,7 @@ func GetStartInfo() ([]string, map[string][]string) {
 	easyjetAirports := EasyjetAirports(page)
 	norwegianAirports := NorwegianAirports(page)
 	lufthansaAirports := LufthansaAirports(page)
-	browser.Close()
-	pw.Stop()
+
 	Info.Println("Merging airports")
 	lr := MergeMaps(lotAirports, ryanairAirports)
 	lre := MergeMaps(lr, easyjetAirports)
@@ -65,12 +62,10 @@ func GetStartInfo() ([]string, map[string][]string) {
 	return useragents, merged
 }
 
-func GetFlights(from, to, fromDate, toDate string, useragents []string, airports map[string][]string) Flights {
+func GetFlights(browser playwright.Browser, from, to, fromDate, toDate string, useragents []string, airports map[string][]string) Flights {
 	fromSymbol := KeyByValue(airports, from)
 	toSymbol := KeyByValue(airports, to)
 
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
 	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragents[rand.Intn(len(useragents))])})
 	page, _ := context.NewPage()
 
@@ -79,8 +74,6 @@ func GetFlights(from, to, fromDate, toDate string, useragents []string, airports
 	easyjetFlights := Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
 	norwegianFlights := Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
 	lufthansaFlights := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	browser.Close()
-	pw.Stop()
 
 	flights := append(lotFlights, ryanairFlights...)
 	flights = append(flights, easyjetFlights...)
@@ -116,7 +109,9 @@ func init() {
 func main() {
 	Info.Println("Initializing the application")
 	rand.Seed(time.Now().Unix())
-	useragents, airports := GetStartInfo()
+	pw, _ := playwright.Run()
+	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
+	useragents, airports := GetStartInfo(browser)
 
 	from := "Aalborg"
 	to := "Zagreb"
@@ -124,6 +119,7 @@ func main() {
 	toDate := "2023-06-26"
 	Info.Println("Looking for flights from", from, "to", to, "date", fromDate, "to", toDate)
 
-	flights := GetFlights(from, to, fromDate, toDate, useragents, airports)
+	flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
 	Info.Println("Found flights from", from, "to", to, "date", fromDate, "to", toDate, "\n", flights.ToString())
+	pw.Stop()
 }

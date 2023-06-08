@@ -88,6 +88,7 @@ func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 
 	urlQuery := url + "/flight-search?OriginCode=" + fromSymbol + "&DestinationCode=" + toSymbol + "&DepartureDate=" +
 		fromDate + "T18%3A07%3A58&ReturnDate=" + toDate + "T18%3A07%3A58&Cabin=E&PaxAdults=1"
+	Info.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)
 	if err != nil {

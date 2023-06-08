@@ -79,6 +79,7 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 
 	urlQuery := url + "/ipc/availability/avaday?AdultCount=1&A_City=" + toSymbol + "&D_City=" +
 		fromSymbol + "&D_Month=" + fromYearMonth + "&D_Day=" + fromDay + "&R_Month=" + toYearMonth + "&R_Day=" + toDay + "&IncludeTransit=true&TripType=2"
+	Info.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)
 	if err != nil {
@@ -86,13 +87,24 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 		return flight
 	}
 
-	err = page.Click(".cookie-consent__accept-all-button")
+	err = page.Click("#nas-cookie-consent-accept-all")
 	if err != nil {
-		Error.Println("Couldn't find the cookie-consent__accept-all-button element,", err)
+		Error.Println("Couldn't find the nas-cookie-consent-accept-all element,", err)
 		return flight
 	}
 
-	res, err := page.InnerHTML(".sectioncontainer")
+	res, err := page.InnerHTML("main")
+	if err != nil {
+		Error.Println("Couldn't find the main element,", err)
+		return flight
+	}
+
+	if !strings.Contains(res, "return trip") {
+		Warning.Println("No flights for the input")
+		return flight
+	}
+
+	res, err = page.InnerHTML(".sectioncontainer")
 	if err != nil {
 		Error.Println("Couldn't find the sectioncontainer element,", err)
 		return flight
