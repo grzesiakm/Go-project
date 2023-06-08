@@ -10,6 +10,7 @@ import (
 )
 
 type Flight struct {
+	Airline       string `json:"Airline"`
 	Departure     string `json:"Departure"`
 	Arrival       string `json:"Arrival"`
 	DepartureTime string `json:"DepartureTime"`
@@ -26,16 +27,27 @@ type Flights struct {
 func (f Flights) ToString() string {
 	res := ""
 	for x := 0; x < len(f.Flights); x++ {
-		res = res + fmt.Sprintf("#%d - departure: %s %s, arrival: %s %s, number: %s, duration: %s, price: %s\n", x, f.Flights[x].Departure, f.Flights[x].DepartureTime,
-			f.Flights[x].Arrival, f.Flights[x].ArrivalTime, f.Flights[x].Number, f.Flights[x].Duration, f.Flights[x].Price)
+		res = res + fmt.Sprintf("#%d %s - departure: %s %s, arrival: %s %s, number: %s, duration: %s, price: %s\n", x, f.Flights[x].Airline, f.Flights[x].Departure,
+			f.Flights[x].DepartureTime, f.Flights[x].Arrival, f.Flights[x].ArrivalTime, f.Flights[x].Number, f.Flights[x].Duration, f.Flights[x].Price)
 	}
 	return res
 }
 
-func KeyByValue(m map[string]string, value string) string {
+func SliceContains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+func KeyByValue(m map[string][]string, value string) string {
 	for k, v := range m {
-		if strings.Contains(v, value) {
-			return k
+		for _, vals := range v {
+			if strings.Contains(vals, value) {
+				return k
+			}
 		}
 	}
 	return ""

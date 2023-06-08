@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -11,34 +9,51 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func EasyjetAirports(useragent string) map[string]string {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
+func EasyjetAirports(page playwright.Page) map[string]string {
+	Info.Println("Looking for easyjet airports")
+	airports := make(map[string]string)
 	url := "https://www.easyjet.com/en/routemap"
-	_, _ = page.Goto(url)
-	res, _ := page.InnerHTML("[data-title='Flights']")
+
+	_, err := page.Goto(url)
+	if err != nil {
+		Error.Println("Couldn't open the page,", err)
+		return airports
+	}
+
+	res, err := page.InnerHTML("[data-title='Flights']")
+	if err != nil {
+		Error.Println("Couldn't find the Flights element,", err)
+		return airports
+	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't create the goquery Document,", err)
+		return airports
 	}
 
-	frameSrc, _ := doc.Find("iframe").Attr("src")
+	frameSrc, exists := doc.Find("iframe").Attr("src")
+	if !exists {
+		Error.Println("Couldn't find the iframe element,", err)
+		return airports
+	}
 
-	_, _ = page.Goto(frameSrc)
-	res, _ = page.InnerHTML("#acOriginAirport_ddl")
+	_, err = page.Goto(frameSrc)
+	if err != nil {
+		Error.Println("Couldn't open the page,", err)
+		return airports
+	}
+	res, err = page.InnerHTML("#acOriginAirport_ddl")
+	if err != nil {
+		Error.Println("Couldn't find the acOriginAirport_ddl element,", err)
+		return airports
+	}
 
 	doc, err = goquery.NewDocumentFromReader(strings.NewReader(res))
-
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't create the goquery Document,", err)
+		return airports
 	}
-
-	airports := make(map[string]string)
 
 	doc.Find("li").Each(func(i int, s *goquery.Selection) {
 		airport := s.Text()
@@ -50,46 +65,66 @@ func EasyjetAirports(useragent string) map[string]string {
 			airports[airportSymbolMatch[2]] = airportSymbolMatch[1]
 		}
 	})
-
-	fmt.Println(airports)
+	Info.Println("Found easyjet airports:", airports)
 	return airports
 }
 
-func Easyjet(airports map[string]string, useragent string) Flights {
-	fmt.Println(useragent)
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
-	page, _ := context.NewPage()
-
+func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
+	Info.Println("Looking for easyjet flights")
+	flight := make([]Flight, 0)
+	fromAirport := airports[fromSymbol]
+	toAirport := airports[toSymbol]
+	if !(SliceContains(fromAirport, EasyjetAirline) && SliceContains(toAirport, EasyjetAirline)) {
+		Warning.Println("Easyjet doesn't fly between", fromSymbol, "and", toSymbol)
+		return flight
+	}
 	url := "https://www.easyjet.com"
-	from := "Bari"
-	to := "Basel"
-	fromDate := "2023-07-01"
-	toDate := "2023-07-08"
 
-	fromSymbol := KeyByValue(airports, from)
-	toSymbol := KeyByValue(airports, to)
+	urlQuery := url + "/deeplink?lang=EN&dep=" + fromSymbol + "&dest=" + toSymbol + "&dd=" + fromDate + "&rd=" +
+		toDate + "&apax=1&cpax=0&ipax=0&SearchFrom=SearchPod2_/en/&isOneWay=off"
 
-	urlQuery := url + "/deeplink?lang=EN&dep=" + fromSymbol + "&dest=" + toSymbol + "&dd=" + fromDate + "&rd=" + toDate + "&apax=1&cpax=0&ipax=0&SearchFrom=SearchPod2_/en/&isOneWay=off"
-
-	fmt.Println(urlQuery)
-
-	_, _ = page.Goto(urlQuery)
-	page.Click("#ensCloseBanner")
-	page.Click(".drawer-button > button")
-	page.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
-	time.Sleep(time.Second)
-	page.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
-	res, _ := page.InnerHTML("body")
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-
+	_, err := page.Goto(urlQuery)
 	if err != nil {
-		log.Fatal(err)
+		Error.Println("Couldn't open the page,", err)
+		return flight
 	}
 
-	flight := make([]Flight, 0)
+	err = page.Click("#ensCloseBanner")
+	if err != nil {
+		Error.Println("Couldn't find the ensCloseBanner element,", err)
+		return flight
+	}
+
+	page.Click(".drawer-button > button")
+	if err != nil {
+		Error.Println("Couldn't find the drawer-button button element,", err)
+		return flight
+	}
+
+	page.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
+	if err != nil {
+		Error.Println("Couldn't find the outbound flight-grid-day element,", err)
+		return flight
+	}
+
+	time.Sleep(time.Second)
+	page.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
+	if err != nil {
+		Error.Println("Couldn't find the return flight-grid-day element,", err)
+		return flight
+	}
+
+	res, err := page.InnerHTML("body")
+	if err != nil {
+		Error.Println("Couldn't find the body element,", err)
+		return flight
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		Error.Println("Couldn't create the goquery Document,", err)
+		return flight
+	}
 
 	if len(doc.Find(".basket-wrapper").Text()) > 0 {
 		doc.Find(".funnel-basket-flight").Each(func(i int, s *goquery.Selection) {
@@ -104,14 +139,12 @@ func Easyjet(airports map[string]string, useragent string) Flights {
 			duration := "placeholder"
 			price := s.Find(".price-eur").Text()
 
-			f := Flight{Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival), DepartureTime: strings.TrimSpace(departureTime),
-				ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number), Duration: strings.TrimSpace(duration), Price: strings.TrimSpace(price)}
+			f := Flight{Airline: EasyjetAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
+				DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number),
+				Duration: strings.TrimSpace(duration), Price: strings.TrimSpace(price)}
 
 			flight = append(flight, f)
 		})
 	}
-
-	var flights Flights
-	flights.Flights = flight
-	return flights
+	return flight
 }

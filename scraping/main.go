@@ -1,51 +1,129 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"math/rand"
+	"os"
 	"time"
+
+	"github.com/playwright-community/playwright-go"
 )
+
+func MergeMaps(m1 map[string]string, m2 map[string]string) map[string]string {
+	merged := make(map[string]string)
+	for k, v := range m1 {
+		merged[k] = v
+	}
+	for key, value := range m2 {
+		merged[key] = value
+	}
+	return merged
+}
+
+func GetStartInfo() ([]string, map[string][]string) {
+	Info.Println("Starting playwright")
+	pw, _ := playwright.Run()
+	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
+	useragents := UserAgents(browser)
+
+	useragent := useragents[rand.Intn(len(useragents))]
+	Info.Println("Using user agent", useragent)
+	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
+	page, _ := context.NewPage()
+	lotAirports := LotAirports(page)
+	ryanairAirports := RyanairAirports(page)
+	easyjetAirports := EasyjetAirports(page)
+	norwegianAirports := NorwegianAirports(page)
+	lufthansaAirports := LufthansaAirports(page)
+	browser.Close()
+	pw.Stop()
+	Info.Println("Merging airports")
+	lr := MergeMaps(lotAirports, ryanairAirports)
+	lre := MergeMaps(lr, easyjetAirports)
+	lren := MergeMaps(lre, norwegianAirports)
+	lrenl := MergeMaps(lren, lufthansaAirports)
+	merged := make(map[string][]string)
+	for k, v := range lrenl {
+		merged[k] = []string{v}
+	}
+	for k := range lotAirports {
+		merged[k] = append(merged[k], LotAirline)
+	}
+	for k := range ryanairAirports {
+		merged[k] = append(merged[k], RyanairAirline)
+	}
+	for k := range easyjetAirports {
+		merged[k] = append(merged[k], EasyjetAirline)
+	}
+	for k := range norwegianAirports {
+		merged[k] = append(merged[k], NorwegianAirline)
+	}
+	for k := range lufthansaAirports {
+		merged[k] = append(merged[k], LufthansaAirline)
+	}
+	Info.Println("Merged airports:", merged)
+	return useragents, merged
+}
+
+func GetFlights(from, to, fromDate, toDate string, useragents []string, airports map[string][]string) Flights {
+	fromSymbol := KeyByValue(airports, from)
+	toSymbol := KeyByValue(airports, to)
+
+	pw, _ := playwright.Run()
+	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
+	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragents[rand.Intn(len(useragents))])})
+	page, _ := context.NewPage()
+
+	lotFlights := Lot(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	ryanairFlights := Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	easyjetFlights := Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	norwegianFlights := Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	lufthansaFlights := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	browser.Close()
+	pw.Stop()
+
+	flights := append(lotFlights, ryanairFlights...)
+	flights = append(flights, easyjetFlights...)
+	flights = append(flights, norwegianFlights...)
+	flights = append(flights, lufthansaFlights...)
+	var airlinesFlights Flights
+	airlinesFlights.Flights = flights
+	return airlinesFlights
+}
+
+var (
+	Warning *log.Logger
+	Info    *log.Logger
+	Error   *log.Logger
+)
+
+const (
+	EasyjetAirline   string = "Easyjet"
+	LotAirline       string = "Lot"
+	LufthansaAirline string = "Lufthansa"
+	NorwegianAirline string = "Norwegian"
+	RyanairAirline   string = "Ryanair"
+)
+
+func init() {
+	Info = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	Warning = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+	Error = log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
 
 // go run .
 
 func main() {
+	Info.Println("Initializing the application")
 	rand.Seed(time.Now().Unix())
-	useragents := UserAgents()
+	useragents, airports := GetStartInfo()
 
-	fmt.Println("LotAirports")
-	lotAirports := LotAirports(useragents[rand.Intn(len(useragents))])
-	fmt.Println("Lot")
-	lotFlights := Lot(lotAirports, useragents[rand.Intn(len(useragents))])
+	from := "Aalborg"
+	to := "Zagreb"
+	fromDate := "2023-06-21"
+	toDate := "2023-06-26"
+	Info.Println("Looking for flights from", from, "to", to, "date", fromDate, "to", toDate)
 
-	fmt.Println("RyanairAirports")
-	ryanairAirports := RyanairAirports(useragents[rand.Intn(len(useragents))])
-	fmt.Println("Ryanair")
-	ryanairFlights := Ryanair(ryanairAirports, useragents[rand.Intn(len(useragents))])
-
-	fmt.Println("EasyjetAirports")
-	easyjetAirports := EasyjetAirports(useragents[rand.Intn(len(useragents))])
-	fmt.Println("Easyjet")
-	easyjetFlights := Easyjet(easyjetAirports, useragents[rand.Intn(len(useragents))])
-
-	fmt.Println("NorwegianAirports")
-	norwegianAirports := NorwegianAirports(useragents[rand.Intn(len(useragents))])
-	fmt.Println("Norwegian")
-	norwegianFlights := Norwegian(norwegianAirports, useragents[rand.Intn(len(useragents))])
-
-	fmt.Println("LufthansaAirports")
-	lufthansaAirports := LufthansaAirports(useragents[rand.Intn(len(useragents))])
-	fmt.Println("Lufthansa")
-	lufthansaFlights := Lufthansa(lufthansaAirports, useragents[rand.Intn(len(useragents))])
-
-	fmt.Println("Results")
-	fmt.Println("Lot")
-	fmt.Println(lotFlights.ToString())
-	fmt.Println("Ryanair")
-	fmt.Println(ryanairFlights.ToString())
-	fmt.Println("Easyjet")
-	fmt.Println(easyjetFlights.ToString())
-	fmt.Println("Norwegian")
-	fmt.Println(norwegianFlights.ToString())
-	fmt.Println("Lufthansa")
-	fmt.Println(lufthansaFlights.ToString())
+	flights := GetFlights(from, to, fromDate, toDate, useragents, airports)
+	Info.Println("Found flights from", from, "to", to, "date", fromDate, "to", toDate, "\n", flights.ToString())
 }
