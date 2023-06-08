@@ -76,6 +76,7 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 
 	urlQuery := url + "?departureAirport=" + fromSymbol + "&destinationAirport=" + toSymbol + "&departureDate=" +
 		GetDateString(fromDate) + "&class=E&adults=1&returnDate=" + GetDateString(toDate)
+	Info.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)
 	if err != nil {

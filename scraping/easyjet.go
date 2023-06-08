@@ -82,6 +82,7 @@ func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 
 	urlQuery := url + "/deeplink?lang=EN&dep=" + fromSymbol + "&dest=" + toSymbol + "&dd=" + fromDate + "&rd=" +
 		toDate + "&apax=1&cpax=0&ipax=0&SearchFrom=SearchPod2_/en/&isOneWay=off"
+	Info.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)
 	if err != nil {
