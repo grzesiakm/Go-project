@@ -94,9 +94,17 @@ const (
 )
 
 var tmpl *template.Template
+var pw *playwright.Playwright
+var browser playwright.Browser
+var useragents []string
+var airports map[string][]string
 
 func init() {
 	tmpl = template.Must(template.ParseGlob("templates/*.gohtml"))
+	rand.Seed(time.Now().Unix())
+	pw, _ = playwright.Run()
+	browser, _ = pw.Firefox.Launch(helper.CustomFirefoxOptions)
+	useragents, airports = GetStartInfo(browser)
 }
 
 // go run main.go
@@ -124,9 +132,6 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
-var pw, _ = playwright.Run()
-var browser, _ = pw.Firefox.Launch(helper.CustomFirefoxOptions)
-
 func index(writer http.ResponseWriter, _ *http.Request) {
 	tmpl.ExecuteTemplate(writer, "index.gohtml", nil)
 }
@@ -142,8 +147,6 @@ func search(writer http.ResponseWriter, request *http.Request) {
 	fromDate := request.FormValue("departureTime")
 	toDate := request.FormValue("arrivalTime")
 
-	rand.Seed(time.Now().Unix())
-	var useragents, airports = GetStartInfo(browser)
 	flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
 	pw.Stop()
 	tmpl.ExecuteTemplate(writer, "search.gohtml", flights)
