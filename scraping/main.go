@@ -4,9 +4,9 @@ import (
 	"github.com/playwright-community/playwright-go"
 	"html/template"
 	"log"
+	"main/helper"
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -22,20 +22,20 @@ func MergeMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 }
 
 func GetStartInfo(browser playwright.Browser) ([]string, map[string][]string) {
-	Info.Println("Starting playwright")
-	useragents := UserAgents(browser)
+	log.Println("Starting playwright")
+	useragents := helper.UserAgents(browser)
 
 	useragent := useragents[rand.Intn(len(useragents))]
-	Info.Println("Using user agent", useragent)
+	log.Println("Using user agent", useragent)
 	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 	page, _ := context.NewPage()
-	lotAirports := LotAirports(page)
-	ryanairAirports := RyanairAirports(page)
-	easyjetAirports := EasyjetAirports(page)
-	norwegianAirports := NorwegianAirports(page)
-	lufthansaAirports := LufthansaAirports(page)
+	lotAirports := helper.LotAirports(page)
+	ryanairAirports := helper.RyanairAirports(page)
+	easyjetAirports := helper.EasyjetAirports(page)
+	norwegianAirports := helper.NorwegianAirports(page)
+	lufthansaAirports := helper.LufthansaAirports(page)
 
-	Info.Println("Merging airports")
+	log.Println("Merging airports")
 	lr := MergeMaps(lotAirports, ryanairAirports)
 	lre := MergeMaps(lr, easyjetAirports)
 	lren := MergeMaps(lre, norwegianAirports)
@@ -59,37 +59,31 @@ func GetStartInfo(browser playwright.Browser) ([]string, map[string][]string) {
 	for k := range lufthansaAirports {
 		merged[k] = append(merged[k], LufthansaAirline)
 	}
-	Info.Println("Merged airports:", merged)
+	log.Println("Merged airports:", merged)
 	return useragents, merged
 }
 
-func GetFlights(browser playwright.Browser, from, to, fromDate, toDate string, useragents []string, airports map[string][]string) Flights {
-	fromSymbol := KeyByValue(airports, from)
-	toSymbol := KeyByValue(airports, to)
+func GetFlights(browser playwright.Browser, from, to, fromDate, toDate string, useragents []string, airports map[string][]string) helper.Flights {
+	fromSymbol := helper.KeyByValue(airports, from)
+	toSymbol := helper.KeyByValue(airports, to)
 
 	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragents[rand.Intn(len(useragents))])})
 	page, _ := context.NewPage()
 
-	lotFlights := Lot(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	ryanairFlights := Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	easyjetFlights := Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	norwegianFlights := Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	lufthansaFlights := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	lotFlights := helper.Lot(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	ryanairFlights := helper.Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	easyjetFlights := helper.Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	norwegianFlights := helper.Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	lufthansaFlights := helper.Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
 
 	flights := append(lotFlights, ryanairFlights...)
 	flights = append(flights, easyjetFlights...)
 	flights = append(flights, norwegianFlights...)
 	flights = append(flights, lufthansaFlights...)
-	var airlinesFlights Flights
+	var airlinesFlights helper.Flights
 	airlinesFlights.Flights = flights
 	return airlinesFlights
 }
-
-var (
-	Warning *log.Logger
-	Info    *log.Logger
-	Error   *log.Logger
-)
 
 const (
 	EasyjetAirline   string = "Easyjet"
@@ -100,16 +94,12 @@ const (
 )
 
 var tmpl *template.Template
-var mux = http.NewServeMux()
 
 func init() {
 	tmpl = template.Must(template.ParseGlob("templates/*.gohtml"))
-	Info = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	Warning = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
-	Error = log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
-// go run .
+// go run main.go
 
 func main() {
 	//Info.Println("Initializing the application")
@@ -117,10 +107,6 @@ func main() {
 	//pw, _ := playwright.Run()
 	//browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
 	//useragents, airports := GetStartInfo(browser)
-
-	http.HandleFunc("/", index)
-	http.HandleFunc("/search", search)
-	log.Fatal(http.ListenAndServe(":9091", mux))
 	//
 	//from := "Aalborg"
 	//to := "Zagreb"
@@ -131,14 +117,19 @@ func main() {
 	//flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
 	//Info.Println("Found flights from", from, "to", to, "date", fromDate, "to", toDate, "\n", flights.ToString())
 	//pw.Stop()
+
+	var mux = http.NewServeMux()
+	mux.HandleFunc("/", index)
+	mux.HandleFunc("/search", search)
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
 func index(writer http.ResponseWriter, _ *http.Request) {
-	log.Fatal(tmpl.ExecuteTemplate(writer, "index.gohtml", mux))
+	tmpl.ExecuteTemplate(writer, "index.gohtml", nil)
 }
 
 func search(writer http.ResponseWriter, request *http.Request) {
-	if request.Method != "post" {
+	if request.Method != "POST" {
 		http.Redirect(writer, request, "/", http.StatusSeeOther)
 		return
 	}
@@ -150,10 +141,10 @@ func search(writer http.ResponseWriter, request *http.Request) {
 
 	rand.Seed(time.Now().Unix())
 	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
+	browser, _ := pw.Firefox.Launch(helper.CustomFirefoxOptions)
 	useragents, airports := GetStartInfo(browser)
 
 	flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
 
-	log.Fatal(tmpl.ExecuteTemplate(writer, "flights.gohtml", flights))
+	tmpl.ExecuteTemplate(writer, "search.gohtml", flights)
 }

@@ -4,15 +4,25 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Flights Scrapper</title>
+    <title>Web Scrapper - Cheapest Flights</title>
 </head>
 <body>
 <h1>{{ .Title }}</h1>
 
-Welcome! Let's find the cheapest flight for you :)
+<form action="/search" method="POST">
+    <label for="from">From</label>
+    <input type="text" name="departure" id="from" placeholder="Departure">
 
-<form action="http://localhost:9091/search">
-    <input type="submit" value="Search away!" />
+    <label for="to">To</label>
+    <input type="text" name="arrival" id="to" placeholder="Arrival">
+
+    <label for="fromDate">Date from (YYYY-MM-DD)</label>
+    <input type="text" name="departureTime" id="fromDate" placeholder="Departure Time">
+
+    <label for="toDate">Date to (YYYY-MM-DD)</label>
+    <input type="text" name="arrivalTime" id="toDate" placeholder="Arrival Time">
+
+    <input type="submit">
 </form>
 
 </body>

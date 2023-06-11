@@ -1,7 +1,8 @@
-package main
+package helper
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -11,37 +12,37 @@ import (
 )
 
 func NorwegianAirports(page playwright.Page) map[string]string {
-	Info.Println("Looking for norwegian airports")
+	log.Println("Looking for norwegian airports")
 	airports := make(map[string]string)
 	url := "https://www.norwegian.com/uk/"
 
 	_, err := page.Goto(url)
 	if err != nil {
-		Error.Println("Couldn't open the page,", err)
+		log.Fatal("Couldn't open the page,", err)
 		return airports
 	}
 
 	err = page.Click("#nas-cookie-consent-accept-all")
 	if err != nil {
-		Error.Println("Couldn't find the nas-cookie-consent-accept-all element,", err)
+		log.Fatal("Couldn't find the nas-cookie-consent-accept-all element,", err)
 		return airports
 	}
 
 	err = page.Click("#nas-airport-select-dropdown-input-0")
 	if err != nil {
-		Error.Println("Couldn't find the nas-airport-select-dropdown-input-0 element,", err)
+		log.Fatal("Couldn't find the nas-airport-select-dropdown-input-0 element,", err)
 		return airports
 	}
 
 	res, err := page.InnerHTML("#nas-airport-select-dropdown-results-0")
 	if err != nil {
-		Error.Println("Couldn't find the nas-airport-select-dropdown-results-0 element,", err)
+		log.Fatal("Couldn't find the nas-airport-select-dropdown-results-0 element,", err)
 		return airports
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		Error.Println("Couldn't create the goquery Document,", err)
+		log.Fatal("Couldn't create the goquery Document,", err)
 		return airports
 	}
 
@@ -54,7 +55,7 @@ func NorwegianAirports(page playwright.Page) map[string]string {
 			airports[airportMatch[2]] = airportMatch[1]
 		}
 	})
-	Info.Println("Found norwegian airports:", airports)
+	log.Println("Found norwegian airports:", airports)
 	return airports
 }
 
@@ -64,12 +65,12 @@ func GetMonthDayDateString(inputDate string) (string, string) {
 }
 
 func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
-	Info.Println("Looking for norwegian flights")
+	log.Println("Looking for norwegian flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
 	toAirport := airports[toSymbol]
 	if !(SliceContains(fromAirport, NorwegianAirline) && SliceContains(toAirport, NorwegianAirline)) {
-		Warning.Println("Norwegian doesn't fly between", fromSymbol, "and", toSymbol)
+		log.Println("Norwegian doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight
 	}
 	url := "https://www.norwegian.com/uk"
@@ -79,40 +80,40 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 
 	urlQuery := url + "/ipc/availability/avaday?AdultCount=1&A_City=" + toSymbol + "&D_City=" +
 		fromSymbol + "&D_Month=" + fromYearMonth + "&D_Day=" + fromDay + "&R_Month=" + toYearMonth + "&R_Day=" + toDay + "&IncludeTransit=true&TripType=2"
-	Info.Println("Opening page", urlQuery)
+	log.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)
 	if err != nil {
-		Error.Println("Couldn't open the page,", err)
+		log.Fatal("Couldn't open the page,", err)
 		return flight
 	}
 
 	err = page.Click("#nas-cookie-consent-accept-all")
 	if err != nil {
-		Error.Println("Couldn't find the nas-cookie-consent-accept-all element,", err)
+		log.Fatal("Couldn't find the nas-cookie-consent-accept-all element,", err)
 		return flight
 	}
 
 	res, err := page.InnerHTML("main")
 	if err != nil {
-		Error.Println("Couldn't find the main element,", err)
+		log.Fatal("Couldn't find the main element,", err)
 		return flight
 	}
 
 	if !strings.Contains(res, "return trip") {
-		Warning.Println("No flights for the input")
+		log.Println("No flights for the input")
 		return flight
 	}
 
 	res, err = page.InnerHTML(".sectioncontainer")
 	if err != nil {
-		Error.Println("Couldn't find the sectioncontainer element,", err)
+		log.Fatal("Couldn't find the sectioncontainer element,", err)
 		return flight
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		Error.Println("Couldn't create the goquery Document,", err)
+		log.Fatal("Couldn't create the goquery Document,", err)
 		return flight
 	}
 
