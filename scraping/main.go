@@ -101,6 +101,8 @@ const (
 )
 
 var tmpl *template.Template
+var pw *playwright.Playwright
+var browser playwright.Browser
 var useragents []string
 var airports map[string][]string
 
@@ -135,9 +137,6 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", mux))
 	pw.Stop()
 }
-
-var pw, _ = playwright.Run()
-var browser, _ = pw.Firefox.Launch(helper.CustomFirefoxOptions)
 
 func index(writer http.ResponseWriter, _ *http.Request) {
 	tmpl.ExecuteTemplate(writer, "index.gohtml", nil)
