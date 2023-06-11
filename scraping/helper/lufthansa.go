@@ -11,7 +11,7 @@ import (
 func LufthansaAirports(page playwright.Page) map[string]string {
 	Info.Println("Looking for lufthansa airports")
 	airports := make(map[string]string)
-	url := "https://www.lufthansa.com/us/en/flights"
+	url := "https://www.flightconnections.com/route-map-lufthansa-lh"
 
 	_, err := page.Goto(url)
 	if err != nil {
@@ -19,41 +19,15 @@ func LufthansaAirports(page playwright.Page) map[string]string {
 		return airports
 	}
 
-	err = page.Click("#cm-acceptAll")
+	err = page.Click(".qc-cmp2-summary-buttons [mode='primary']")
 	if err != nil {
-		Error.Println("Couldn't find the cm-acceptAll element,", err)
+		Error.Println("Couldn't find the qc-cmp2-summary-buttons element,", err)
 		return airports
 	}
 
-	err = page.Click("[placeholder='From']")
+	res, err := page.InnerHTML(".airline-info")
 	if err != nil {
-		Error.Println("Couldn't find the From element,", err)
-		return airports
-	}
-
-	err = page.Click(".autocomplete-airport .input-icon")
-	if err != nil {
-		Error.Println("Couldn't find the input-icon element,", err)
-		return airports
-	}
-
-	err = page.Click(".df-result-wrapper .btn-secondary")
-	if err != nil {
-		Error.Println("Couldn't find the btn-secondary element,", err)
-		return airports
-	}
-
-	var timeout = float64(1000)
-	for {
-		err := page.Click(".df-result-wrapper .btn-secondary", playwright.PageClickOptions{Timeout: &timeout})
-		if err != nil {
-			goto nextPart
-		}
-	}
-nextPart:
-	res, err := page.InnerHTML(".df-result-section > ol")
-	if err != nil {
-		Error.Println("Couldn't find the df-result-section element,", err)
+		Error.Println("Couldn't find the airline-info-list element,", err)
 		return airports
 	}
 
@@ -63,13 +37,14 @@ nextPart:
 		return airports
 	}
 
-	doc.Find("li").Each(func(i int, s *goquery.Selection) {
-		airport := s.Find(".city-name").Text()
-		airportSymbol, _ := s.Find(".image-wrapper img").Attr("src")
-		re := regexp.MustCompile(`destination\/(.*)-square`)
-		airportSymbolMatch := re.FindStringSubmatch(airportSymbol)
+	doc.Find(".airline-destination").Each(func(i int, s *goquery.Selection) {
+		airport, _ := s.Attr("data-a")
+		re := regexp.MustCompile(`(.*) \((.*)\)`)
+		airportSymbolMatch := re.FindStringSubmatch(airport)
 
-		airports[strings.ToUpper(airportSymbolMatch[1])] = strings.TrimSpace(airport)
+		if len(airportSymbolMatch) == 3 {
+			airports[airportSymbolMatch[2]] = airportSymbolMatch[1]
+		}
 	})
 	Info.Println("Found lufthansa airports:", airports)
 	return airports
