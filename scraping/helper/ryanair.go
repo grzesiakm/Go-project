@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"log"
 	"regexp"
 	"strings"
 
@@ -10,37 +9,37 @@ import (
 )
 
 func RyanairAirports(page playwright.Page) map[string]string {
-	log.Println("Looking for ryanair airports")
+	Info.Println("Looking for ryanair airports")
 	airports := make(map[string]string)
 	url := "https://www.ryanair.com/us/en"
 
 	_, err := page.Goto(url)
 	if err != nil {
-		log.Fatal("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err)
 		return airports
 	}
 
 	err = page.Click(".cookie-popup-with-overlay__button")
 	if err != nil {
-		log.Fatal("Couldn't find the cookie-popup-with-overlay__button element,", err)
+		Error.Println("Couldn't find the cookie-popup-with-overlay__button element,", err)
 		return airports
 	}
 
 	err = page.Click("#input-button__destination")
 	if err != nil {
-		log.Fatal("Couldn't find the input-button__destination element,", err)
+		Error.Println("Couldn't find the input-button__destination element,", err)
 		return airports
 	}
 
 	res, err := page.InnerHTML(".list__airports-scrollable-container")
 	if err != nil {
-		log.Fatal("Couldn't find the list__airports-scrollable-container element,", err)
+		Error.Println("Couldn't find the list__airports-scrollable-container element,", err)
 		return airports
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		log.Fatal("Couldn't create the goquery Document,", err)
+		Error.Println("Couldn't create the goquery Document,", err)
 		return airports
 	}
 
@@ -53,17 +52,17 @@ func RyanairAirports(page playwright.Page) map[string]string {
 
 		airports[airportSymbol] = airportMatch
 	})
-	log.Println("Found ryanair airports:", airports)
+	Info.Println("Found ryanair airports:", airports)
 	return airports
 }
 
 func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
-	log.Println("Looking for ryanair flights")
+	Info.Println("Looking for ryanair flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
 	toAirport := airports[toSymbol]
 	if !(SliceContains(fromAirport, RyanairAirline) && SliceContains(toAirport, RyanairAirline)) {
-		log.Println("Ryanair doesn't fly between", fromSymbol, "and", toSymbol)
+		Warning.Println("Ryanair doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight
 	}
 	url := "https://www.ryanair.com/us/en"
@@ -72,29 +71,29 @@ func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		fromDate + "&dateIn=" + toDate + "&isConnectedFlight=false&isReturn=true&discount=0&promoCode=&originIata=" +
 		fromSymbol + "&destinationIata=" + toSymbol + "&tpAdults=1&tpTeens=0&tpChildren=0&tpInfants=0&tpStartDate=" +
 		fromDate + "&tpEndDate=" + toDate + "&tpDiscount=0&tpPromoCode=&tpOriginIata=" + fromSymbol + "&tpDestinationIata=" + toSymbol
-	log.Println("Opening page", urlQuery)
+	Info.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)
 	if err != nil {
-		log.Fatal("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err)
 		return flight
 	}
 
 	err = page.Click(".cookie-popup-with-overlay__button")
 	if err != nil {
-		log.Fatal("Couldn't find the cookie-popup-with-overlay__button element,", err)
+		Error.Println("Couldn't find the cookie-popup-with-overlay__button element,", err)
 		return flight
 	}
 
 	res, err := page.InnerHTML(".journeys-wrapper")
 	if err != nil {
-		log.Fatal("Couldn't find the journeys-wrapper element,", err)
+		Error.Println("Couldn't find the journeys-wrapper element,", err)
 		return flight
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		log.Fatal("Couldn't create the goquery Document,", err)
+		Error.Println("Couldn't create the goquery Document,", err)
 		return flight
 	}
 

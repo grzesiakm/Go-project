@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -11,48 +10,48 @@ import (
 )
 
 func EasyjetAirports(page playwright.Page) map[string]string {
-	log.Println("Looking for easyjet airports")
+	Info.Println("Looking for easyjet airports")
 	airports := make(map[string]string)
 	url := "https://www.easyjet.com/en/routemap"
 
 	_, err := page.Goto(url)
 	if err != nil {
-		log.Fatal("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err)
 		return airports
 	}
 
 	res, err := page.InnerHTML("[data-title='Flights']")
 	if err != nil {
-		log.Fatal("Couldn't find the Flights element,", err)
+		Error.Println("Couldn't find the Flights element,", err)
 		return airports
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		log.Fatal("Couldn't create the goquery Document,", err)
+		Error.Println("Couldn't create the goquery Document,", err)
 		return airports
 	}
 
 	frameSrc, exists := doc.Find("iframe").Attr("src")
 	if !exists {
-		log.Fatal("Couldn't find the iframe element,", err)
+		Error.Println("Couldn't find the iframe element,", err)
 		return airports
 	}
 
 	_, err = page.Goto(frameSrc)
 	if err != nil {
-		log.Fatal("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err)
 		return airports
 	}
 	res, err = page.InnerHTML("#acOriginAirport_ddl")
 	if err != nil {
-		log.Fatal("Couldn't find the acOriginAirport_ddl element,", err)
+		Error.Println("Couldn't find the acOriginAirport_ddl element,", err)
 		return airports
 	}
 
 	doc, err = goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		log.Fatal("Couldn't create the goquery Document,", err)
+		Error.Println("Couldn't create the goquery Document,", err)
 		return airports
 	}
 
@@ -66,65 +65,65 @@ func EasyjetAirports(page playwright.Page) map[string]string {
 			airports[airportSymbolMatch[2]] = airportSymbolMatch[1]
 		}
 	})
-	log.Println("Found easyjet airports:", airports)
+	Info.Println("Found easyjet airports:", airports)
 	return airports
 }
 
 func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
-	log.Println("Looking for easyjet flights")
+	Info.Println("Looking for easyjet flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
 	toAirport := airports[toSymbol]
 	if !(SliceContains(fromAirport, EasyjetAirline) && SliceContains(toAirport, EasyjetAirline)) {
-		log.Println("Easyjet doesn't fly between", fromSymbol, "and", toSymbol)
+		Warning.Println("Easyjet doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight
 	}
 	url := "https://www.easyjet.com"
 
 	urlQuery := url + "/deeplink?lang=EN&dep=" + fromSymbol + "&dest=" + toSymbol + "&dd=" + fromDate + "&rd=" +
 		toDate + "&apax=1&cpax=0&ipax=0&SearchFrom=SearchPod2_/en/&isOneWay=off"
-	log.Println("Opening page", urlQuery)
+	Info.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)
 	if err != nil {
-		log.Fatal("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err)
 		return flight
 	}
 
 	err = page.Click("#ensCloseBanner")
 	if err != nil {
-		log.Fatal("Couldn't find the ensCloseBanner element,", err)
+		Error.Println("Couldn't find the ensCloseBanner element,", err)
 		return flight
 	}
 
 	page.Click(".drawer-button > button")
 	if err != nil {
-		log.Fatal("Couldn't find the drawer-button button element,", err)
+		Error.Println("Couldn't find the drawer-button button element,", err)
 		return flight
 	}
 
 	page.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
 	if err != nil {
-		log.Fatal("Couldn't find the outbound flight-grid-day element,", err)
+		Error.Println("Couldn't find the outbound flight-grid-day element,", err)
 		return flight
 	}
 
 	time.Sleep(time.Second)
 	page.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
 	if err != nil {
-		log.Fatal("Couldn't find the return flight-grid-day element,", err)
+		Error.Println("Couldn't find the return flight-grid-day element,", err)
 		return flight
 	}
 
 	res, err := page.InnerHTML("body")
 	if err != nil {
-		log.Fatal("Couldn't find the body element,", err)
+		Error.Println("Couldn't find the body element,", err)
 		return flight
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		log.Fatal("Couldn't create the goquery Document,", err)
+		Error.Println("Couldn't create the goquery Document,", err)
 		return flight
 	}
 

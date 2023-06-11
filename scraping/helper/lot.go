@@ -2,7 +2,6 @@ package helper
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -12,39 +11,39 @@ import (
 )
 
 func LotAirports(page playwright.Page) map[string]string {
-	log.Println("Looking for lot airports")
+	Info.Println("Looking for lot airports")
 	airports := make(map[string]string)
 	url := "https://www.lot.com/us/en"
 
 	_, err := page.Goto(url)
 	if err != nil {
-		log.Fatal("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err)
 		return airports
 	}
 
 	time.Sleep(time.Second)
 	err = page.Click("#onetrust-accept-btn-handler")
 	if err != nil {
-		log.Fatal("Couldn't find the onetrust-accept-btn-handler element,", err)
+		Error.Println("Couldn't find the onetrust-accept-btn-handler element,", err)
 		return airports
 	}
 
 	time.Sleep(time.Second)
 	err = page.Click("#airport-select-0 > .airport-select__value")
 	if err != nil {
-		log.Fatal("Couldn't find the airport-select__value element,", err)
+		Error.Println("Couldn't find the airport-select__value element,", err)
 		return airports
 	}
 
 	res, err := page.InnerHTML(".combobox__list-wrapper")
 	if err != nil {
-		log.Fatal("Couldn't find the combobox__list-wrapper element,", err)
+		Error.Println("Couldn't find the combobox__list-wrapper element,", err)
 		return airports
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		log.Fatal("Couldn't create the goquery Document,", err)
+		Error.Println("Couldn't create the goquery Document,", err)
 		return airports
 	}
 
@@ -55,7 +54,7 @@ func LotAirports(page playwright.Page) map[string]string {
 
 		airports[airportLabelMatch[2]] = airportLabelMatch[1]
 	})
-	log.Fatal("Found lot airports:", airports)
+	Info.Println("Found lot airports:", airports)
 	return airports
 }
 
@@ -65,50 +64,50 @@ func GetDateString(inputDate string) string {
 }
 
 func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
-	log.Println("Looking for lot flights")
+	Info.Println("Looking for lot flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
 	toAirport := airports[toSymbol]
 	if !(SliceContains(fromAirport, LotAirline) && SliceContains(toAirport, LotAirline)) {
-		log.Println("Lot doesn't fly between", fromSymbol, "and", toSymbol)
+		Warning.Println("Lot doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight
 	}
 	url := "https://www.lot.com/us/en"
 
 	urlQuery := url + "?departureAirport=" + fromSymbol + "&destinationAirport=" + toSymbol + "&departureDate=" +
 		GetDateString(fromDate) + "&class=E&adults=1&returnDate=" + GetDateString(toDate)
-	log.Println("Opening page", urlQuery)
+	Info.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)
 	if err != nil {
-		log.Fatal("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err)
 		return flight
 	}
 
 	time.Sleep(time.Second)
 	err = page.Click("#onetrust-accept-btn-handler")
 	if err != nil {
-		log.Fatal("Couldn't find the onetrust-accept-btn-handler element,", err)
+		Error.Println("Couldn't find the onetrust-accept-btn-handler element,", err)
 		return flight
 	}
 
 	time.Sleep(time.Second)
 	err = page.Click(".bookerFlight__submit-button")
 	if err != nil {
-		log.Fatal("Couldn't find the bookerFlight__submit-button element,", err)
+		Error.Println("Couldn't find the bookerFlight__submit-button element,", err)
 		return flight
 	}
 
 	time.Sleep(time.Second)
 	res, err := page.InnerHTML("#availability-content")
 	if err != nil {
-		log.Fatal("Couldn't find the availability-content element,", err)
+		Error.Println("Couldn't find the availability-content element,", err)
 		return flight
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		log.Fatal("Couldn't create the goquery Document,", err)
+		Error.Println("Couldn't create the goquery Document,", err)
 		return flight
 	}
 

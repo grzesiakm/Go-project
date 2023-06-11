@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/playwright-community/playwright-go"
 	"html/template"
 	"log"
 	"main/helper"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"github.com/playwright-community/playwright-go"
 )
 
 func MergeMaps(m1 map[string]string, m2 map[string]string) map[string]string {
@@ -85,6 +86,12 @@ func GetFlights(browser playwright.Browser, from, to, fromDate, toDate string, u
 	return airlinesFlights
 }
 
+var (
+	Warning *log.Logger
+	Info    *log.Logger
+	Error   *log.Logger
+)
+
 const (
 	EasyjetAirline   string = "Easyjet"
 	LotAirline       string = "Lot"
@@ -94,9 +101,13 @@ const (
 )
 
 var tmpl *template.Template
+var useragents []string
+var airports map[string][]string
 
 func init() {
+	rand.Seed(time.Now().Unix())
 	tmpl = template.Must(template.ParseGlob("templates/*.gohtml"))
+	useragents, airports = GetStartInfo(browser)
 }
 
 // go run main.go
@@ -122,6 +133,7 @@ func main() {
 	mux.HandleFunc("/", index)
 	mux.HandleFunc("/search", search)
 	log.Fatal(http.ListenAndServe(":8080", mux))
+	pw.Stop()
 }
 
 var pw, _ = playwright.Run()
@@ -142,9 +154,7 @@ func search(writer http.ResponseWriter, request *http.Request) {
 	fromDate := request.FormValue("departureTime")
 	toDate := request.FormValue("arrivalTime")
 
-	rand.Seed(time.Now().Unix())
-	var useragents, airports = GetStartInfo(browser)
 	flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
-	pw.Stop()
+	Info.Println(flights.ToString())
 	tmpl.ExecuteTemplate(writer, "search.gohtml", flights)
 }
