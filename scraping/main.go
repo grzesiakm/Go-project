@@ -108,6 +108,8 @@ var airports map[string][]string
 
 func init() {
 	rand.Seed(time.Now().Unix())
+	pw, _ = playwright.Run()
+	browser, _ = pw.Firefox.Launch(helper.CustomFirefoxOptions)
 	tmpl = template.Must(template.ParseGlob("templates/*.gohtml"))
 	useragents, airports = GetStartInfo(browser)
 }
