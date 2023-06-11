@@ -124,6 +124,9 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
+var pw, _ = playwright.Run()
+var browser, _ = pw.Firefox.Launch(helper.CustomFirefoxOptions)
+
 func index(writer http.ResponseWriter, _ *http.Request) {
 	tmpl.ExecuteTemplate(writer, "index.gohtml", nil)
 }
@@ -140,11 +143,8 @@ func search(writer http.ResponseWriter, request *http.Request) {
 	toDate := request.FormValue("arrivalTime")
 
 	rand.Seed(time.Now().Unix())
-	pw, _ := playwright.Run()
-	browser, _ := pw.Firefox.Launch(helper.CustomFirefoxOptions)
-	useragents, airports := GetStartInfo(browser)
-
+	var useragents, airports = GetStartInfo(browser)
 	flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
-
+	pw.Stop()
 	tmpl.ExecuteTemplate(writer, "search.gohtml", flights)
 }
