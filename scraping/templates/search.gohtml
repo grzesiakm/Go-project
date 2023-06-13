@@ -6,19 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scrapped Flights</title>
 </head>
+<style>
+    table, th, td {
+        border:1px solid black;
+    }
+</style>
 <body>
-<h1>{{ .Title }}</h1>
+<h1>Scrapped Flights</h1>
 
 <ul>
     {{ range .Flights }}
-        <li>{{.Airline}}</li>
-        <li>{{.Departure}}</li>
-        <li>{{.Arrival}}</li>
-        <li>{{.DepartureTime}}</li>
-        <li>{{.ArrivalTime}}</li>
-        <li>{{.Number}}</li>
-        <li>{{.Duration}}</li>
-        <li>{{.Price}}</li>
+        <b>{{.Airline}}</b>
+        <table style="width:100%">
+            <tr>
+                <th>{{.Departure}}</th>
+                <th>{{.Arrival}}</th>
+                <th>{{.DepartureTime}}</th>
+                <th>{{.ArrivalTime}}</th>
+                <th>{{.Number}}</th>
+                <th>{{.Duration}}</th>
+                <th>{{.Price}}</th>
+            </tr>
+        </table>
     {{ end }}
 </ul>
 

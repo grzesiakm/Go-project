@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"html/template"
 	"log"
-	"main/helper"
+	. "main/helper"
 	"math/rand"
 	"net/http"
 	"os"
@@ -34,7 +34,7 @@ func GetStartInfo(browser playwright.Browser) ([]string, map[string][]string) {
 		decoder.Decode(&useragents)
 		Info.Println("Read useragents from file")
 	} else {
-		useragents = helper.UserAgents(browser)
+		useragents = UserAgents(browser)
 		encodeFile, err := os.Create("useragents.gob")
 		if err != nil {
 			Error.Println("Error while writing to useragents.gob", err)
@@ -60,11 +60,11 @@ nextPart:
 		log.Println("Using user agent", useragent)
 		context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 		page, _ := context.NewPage()
-		lotAirports := helper.LotAirports(page)
-		ryanairAirports := helper.RyanairAirports(page)
-		easyjetAirports := helper.EasyjetAirports(page)
-		norwegianAirports := helper.NorwegianAirports(page)
-		lufthansaAirports := helper.LufthansaAirports(page)
+		lotAirports := LotAirports(page)
+		ryanairAirports := RyanairAirports(page)
+		easyjetAirports := EasyjetAirports(page)
+		norwegianAirports := NorwegianAirports(page)
+		lufthansaAirports := LufthansaAirports(page)
 
 		log.Println("Merging airports")
 		lr := MergeMaps(lotAirports, ryanairAirports)
@@ -107,41 +107,27 @@ nextNextPart:
 	return useragents, merged
 }
 
-func GetFlights(browser playwright.Browser, from, to, fromDate, toDate string, useragents []string, airports map[string][]string) helper.Flights {
-	fromSymbol := helper.KeyByValue(airports, from)
-	toSymbol := helper.KeyByValue(airports, to)
+func GetFlights(browser playwright.Browser, from, to, fromDate, toDate string, useragents []string, airports map[string][]string) Flights {
+	fromSymbol := KeyByValue(airports, from)
+	toSymbol := KeyByValue(airports, to)
 
 	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragents[rand.Intn(len(useragents))])})
 	page, _ := context.NewPage()
 
-	lotFlights := helper.Lot(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	ryanairFlights := helper.Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	easyjetFlights := helper.Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	norwegianFlights := helper.Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	lufthansaFlights := helper.Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	lotFlights := Lot(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	ryanairFlights := Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	easyjetFlights := Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	norwegianFlights := Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	lufthansaFlights := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
 
 	flights := append(lotFlights, ryanairFlights...)
 	flights = append(flights, easyjetFlights...)
 	flights = append(flights, norwegianFlights...)
 	flights = append(flights, lufthansaFlights...)
-	var airlinesFlights helper.Flights
+	var airlinesFlights Flights
 	airlinesFlights.Flights = flights
 	return airlinesFlights
 }
-
-var (
-	Warning *log.Logger
-	Info    *log.Logger
-	Error   *log.Logger
-)
-
-const (
-	EasyjetAirline   string = "Easyjet"
-	LotAirline       string = "Lot"
-	LufthansaAirline string = "Lufthansa"
-	NorwegianAirline string = "Norwegian"
-	RyanairAirline   string = "Ryanair"
-)
 
 var tmpl *template.Template
 var pw *playwright.Playwright
@@ -155,7 +141,7 @@ func init() {
 	Warning = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 	Error = log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	pw, _ = playwright.Run()
-	browser, _ = pw.Firefox.Launch(helper.CustomFirefoxOptions)
+	browser, _ = pw.Firefox.Launch(CustomFirefoxOptions)
 	tmpl = template.Must(template.ParseGlob("templates/*.gohtml"))
 	useragents, airports = GetStartInfo(browser)
 }
@@ -163,22 +149,6 @@ func init() {
 // go run main.go
 
 func main() {
-	//Info.Println("Initializing the application")
-	//rand.Seed(time.Now().Unix())
-	//pw, _ := playwright.Run()
-	//browser, _ := pw.Firefox.Launch(CustomFirefoxOptions)
-	//useragents, airports := GetStartInfo(browser)
-	//
-	//from := "Aalborg"
-	//to := "Zagreb"
-	//fromDate := "2023-06-21"
-	//toDate := "2023-06-26"
-	////Info.Println("Looking for flights from", from, "to", to, "date", fromDate, "to", toDate)
-	//
-	//flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
-	//Info.Println("Found flights from", from, "to", to, "date", fromDate, "to", toDate, "\n", flights.ToString())
-	//pw.Stop()
-
 	var mux = http.NewServeMux()
 	mux.HandleFunc("/", index)
 	mux.HandleFunc("/search", search)
@@ -187,7 +157,11 @@ func main() {
 }
 
 func index(writer http.ResponseWriter, _ *http.Request) {
-	tmpl.ExecuteTemplate(writer, "index.gohtml", nil)
+	err := tmpl.ExecuteTemplate(writer, "index.gohtml", nil)
+	if err != nil {
+		Error.Println(err)
+		return
+	}
 }
 
 func search(writer http.ResponseWriter, request *http.Request) {
@@ -200,7 +174,6 @@ func search(writer http.ResponseWriter, request *http.Request) {
 	to := request.FormValue("arrival")
 	fromDate := request.FormValue("departureTime")
 	toDate := request.FormValue("arrivalTime")
-
 	flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
 	Info.Println(flights.ToString())
 	tmpl.ExecuteTemplate(writer, "search.gohtml", flights)
