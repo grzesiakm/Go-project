@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"
+        integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+        integrity="sha512-t4GWSVZO1eC8BM339Xd7Uphw5s17a86tIZIj8qRxhnKub6WoyhnrxeCIMeAqBPgdZGlCcG2PrZjMc+Wr78+5Xg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>Scrapped Flights</title>
+    <style>
+        html, body {
+          height: 100%;
+        }
+        body {
+          display: -ms-flexbox;
+          display: -webkit-box;
+          display: flex;
+          -ms-flex-align: center;
+          -ms-flex-pack: center;
+          -webkit-box-align: center;
+          align-items: center;
+          -webkit-box-pack: center;
+          justify-content: center;
+          padding-top: 40px;
+          padding-bottom: 40px;
+          background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body class="text-center">
+    <div class="container-fluid">
+        <h1 class="h3 mb-3 font-weight-normal">Scrapped Flights</h1>
+        <div class="table-responsive">
+            <table class="table table-striped table-sm">
+                <thead>
+                <tr>
+                    <th scope="col">Airline</th>
+                    <th scope="col">Departure</th>
+                    <th scope="col">Arrival</th>
+                    <th scope="col">Departure Time</th>
+                    <th scope="col">Arrival Time</th>
+                    <th scope="col">Flight Number</th>
+                    <th scope="col">Duration</th>
+                    <th scope="col">Price</th>
+                </tr>
+                </thead>
+                <tbody>
+                {{ range .Flights }}
+                    <tr>
+                        <td>{{.Airline}}</td>
+                        <td>{{.Departure}}</td>
+                        <td>{{.Arrival}}</td>
+                        <td>{{.DepartureTime}}</td>
+                        <td>{{.ArrivalTime}}</td>
+                        <td>{{.Number}}</td>
+                        <td>{{.Duration}}</td>
+                        <td>{{.Price}}</td>
+                    </tr>
+                {{ end }}
+                </tbody>
+            </table>
+        </div>
+        <a href="/" class="btn btn-lg btn-primary btn-block m-3" role="button">Go back to the search form</a>
+    </div>
+</body>
+</html>

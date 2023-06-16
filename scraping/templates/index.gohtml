@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"
+        integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+        integrity="sha512-t4GWSVZO1eC8BM339Xd7Uphw5s17a86tIZIj8qRxhnKub6WoyhnrxeCIMeAqBPgdZGlCcG2PrZjMc+Wr78+5Xg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/js/bootstrap-datepicker.min.js"
+        integrity="sha512-LsnSViqQyaXpD4mBBdRYeP6sRwJiJveh2ZIbW41EBrNmKxgr/LFZIiWT6yr+nycvhvauz8c2nYMhrP80YhG7Cw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker.min.css"
+        integrity="sha512-34s5cpvaNG3BknEWSuOncX28vz97bRI59UnVtEEpFX536A7BtZSJHsDyFoCl8S7Dt2TPzcrCEoHBGeM4SUBDBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.2.0/choices.min.js"
+        integrity="sha512-OrRY3yVhfDckdPBIjU2/VXGGDjq3GPcnILWTT39iYiuV6O3cEcAxkgCBVR49viQ99vBFeu+a6/AoFAkNHgFteg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        html, body {
+          height: 100%;
+        }
+        body {
+          display: -ms-flexbox;
+          display: -webkit-box;
+          display: flex;
+          -ms-flex-align: center;
+          -ms-flex-pack: center;
+          -webkit-box-align: center;
+          align-items: center;
+          -webkit-box-pack: center;
+          justify-content: center;
+          padding-top: 40px;
+          padding-bottom: 40px;
+          background-color: #f5f5f5;
+        }
+        .form-flights {
+          width: 100%;
+          max-width: 500px;
+          padding: 15px;
+          margin: 0 auto;
+        }
+        .form-flights .form-control {
+          position: relative;
+          box-sizing: border-box;
+          height: auto;
+          padding: 10px;
+          font-size: 16px;
+        }
+        .form-flights .form-control:focus {
+          z-index: 2;
+        }
+    </style>
+    <script type="text/javascript">
+        let todaysDate = new Date();
+        document.addEventListener('DOMContentLoaded', function() {
+            $('.input-daterange').datepicker({
+                format: "yyyy-mm-dd",
+                todayBtn: "linked",
+                startDate: todaysDate.toISOString().split('T')[0],
+            });
+        });
+
+        const sorting = document.querySelector('.selectpicker');
+        const commentSorting = document.querySelector('.selectpicker');
+        const sortingchoices = new Choices(sorting, {
+            placeholder: false,
+            itemSelectText: ''
+        });
+        let sortingClass = sorting.getAttribute('class');
+        window.onload = function () {
+            sorting.parentElement.setAttribute('class', sortingClass);
+        }
+    </script>
+    <title>Web Scrapper - Cheapest Flights</title>
+</head>
+<body class="text-center">
+    <form action="/search" method="POST" class="form-flights">
+        <h1 class="h3 mb-3 font-weight-normal">Web Scrapper - Cheapest Flights</h1>
+        <p>EasyJet, Lot, Lufthansa, Norwegian, RyanAir</p>
+
+        <label for="from" class="sr-only">Departure</label>
+        <select class="selectpicker form-control" name="departure" id="from" placeholder="Departure" required autofocus>
+            {{ range $key, $value := .}}
+                <option value="{{ $key }}">{{ index $value 0 }}</option>
+            {{ end}}
+        </select>
+
+        <label for="to" class="sr-only">Arrival</label>
+        <select class="selectpicker form-control" name="arrival" id="to" placeholder="Arrival" required autofocus>
+            {{ range $key, $value := .}}
+                <option value="{{ $key }}">{{ index $value 0 }}</option>
+            {{ end}}
+        </select>
+
+        <label for="datepicker" class="sr-only">Date</label>
+        <div class="input-daterange input-group" id="datepicker">
+            <input type="text" class="input-sm form-control" name="start" />
+            <span class="input-group-addon m-3">to</span>
+            <input type="text" class="input-sm form-control" name="end" />
+        </div>
+        <button class="btn btn-lg btn-primary btn-block m-3" type="submit" id="sumbit"><span id="loader" class="" role="status" aria-hidden="true"></span>Submit</button>
+    </form>
+</body>
+</html>

@@ -1,6 +1,7 @@
-package main
+package helper
 
 import (
+	"log"
 	"regexp"
 	"strings"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func UserAgents(browser playwright.Browser) []string {
-	Info.Println("Looking for user agents")
+	log.Println("Looking for user agents")
 	useragents := make([]string, 0)
 	context, _ := browser.NewContext()
 	page, _ := context.NewPage()
@@ -17,19 +18,19 @@ func UserAgents(browser playwright.Browser) []string {
 
 	_, err := page.Goto(url)
 	if err != nil {
-		Error.Println("Couldn't open the page,", err)
+		log.Fatal("Couldn't open the page,", err)
 		return useragents
 	}
 
 	res, err := page.InnerHTML("#most-common-desktop-useragents-json-csv > div:nth-child(1)")
 	if err != nil {
-		Error.Println("Couldn't find the most-common-desktop-useragents-json-csv element,", err)
+		log.Fatal("Couldn't find the most-common-desktop-useragents-json-csv element,", err)
 		return useragents
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		Error.Println("Couldn't create the goquery Document,", err)
+		log.Fatal("Couldn't create the goquery Document,", err)
 		return useragents
 	}
 
@@ -41,6 +42,6 @@ func UserAgents(browser playwright.Browser) []string {
 	}
 	// get the more popular agents
 	useragents = useragents[:12]
-	Info.Println("Found user agents:", useragents)
+	log.Println("Found user agents:", useragents)
 	return useragents
 }
