@@ -87,9 +87,9 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 		return flight, false
 	}
 
-	err = page.Click("#nas-cookie-consent-accept-all")
+	err = page.Click(".cookie-consent__footer-buttons > button:first-child")
 	if err != nil {
-		Error.Println("Couldn't find the nas-cookie-consent-accept-all element,", err)
+		Error.Println("Couldn't find the cookie-consent__footer-buttons element,", err)
 		return flight, false
 	}
 

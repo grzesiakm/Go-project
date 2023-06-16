@@ -13,7 +13,7 @@ import (
 func LotAirports(page playwright.Page) map[string]string {
 	Info.Println("Looking for lot airports")
 	airports := make(map[string]string)
-	url := "https://www.lot.com/us/en"
+	url := "https://www.lot.com/gb/en"
 
 	_, err := page.Goto(url)
 	if err != nil {
@@ -72,7 +72,7 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 		Warning.Println("Lot doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight, false
 	}
-	url := "https://www.lot.com/us/en"
+	url := "https://www.lot.com/gb/en"
 
 	urlQuery := url + "?departureAirport=" + fromSymbol + "&destinationAirport=" + toSymbol + "&departureDate=" +
 		GetDateString(fromDate) + "&class=E&adults=1&returnDate=" + GetDateString(toDate)
@@ -99,7 +99,18 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 	}
 
 	time.Sleep(time.Second)
-	res, err := page.InnerHTML("#availability-content")
+	res, err := page.InnerHTML("#content")
+	if err != nil {
+		Error.Println("Couldn't find the content element,", err)
+		return flight, false
+	}
+
+	if !strings.Contains(res, "unavailable on selected") {
+		Warning.Println("No flights for the input")
+		return flight, false
+	}
+
+	res, err = page.InnerHTML("#availability-content")
 	if err != nil {
 		Error.Println("Couldn't find the availability-content element,", err)
 		return flight, false

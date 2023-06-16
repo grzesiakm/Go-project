@@ -35,7 +35,7 @@ type Flights struct {
 func (f Flights) ToString() string {
 	res := ""
 	for x := 0; x < len(f.Flights); x++ {
-		res = res + fmt.Sprintf("#%d %s - departure: %s %s, arrival: %s %s, number: %s, duration: %s, price: %s\n", x, f.Flights[x].Airline, f.Flights[x].Departure,
+		res = res + fmt.Sprintf("#%d %s - departure: %s %s, arrival: %s %s, number: %s, duration: %s, price: %v\n", x, f.Flights[x].Airline, f.Flights[x].Departure,
 			f.Flights[x].DepartureTime, f.Flights[x].Arrival, f.Flights[x].ArrivalTime, f.Flights[x].Number, f.Flights[x].Duration, f.Flights[x].Price)
 	}
 	return res
@@ -60,38 +60,6 @@ func KeyByValue(m map[string][]string, value string) string {
 	}
 	return ""
 }
-
-var RemoveAnimationCss = `
-	* {
-		transition-duration: 0s !important;
-	}`
-
-// animation-delay: -0.0001s !important;
-// animation-duration: 0s !important;
-// animation-play-state: paused !important;
-// caret-color: transparent !important;
-
-var AddCssScript = `
-	(css) => {
-		const style = document.createElement('style');
-		style.type = 'text/css';
-		style.appendChild(document.createTextNode(css));
-		document.head.appendChild(style);
-		return true;
-	}`
-var RemoveElementScript = `
-	(id) => {
-		const element = document.getElementById(id);
-		element.remove();
-		return true;
-	}`
-var HideElementScript = `
-	(id) => {
-		const element = document.getElementById(id);
-		element.style.display = 'none';
-		element.style.visibility = 'hidden';
-		return true;
-	}`
 
 func SaveToFile(filename, content string) {
 

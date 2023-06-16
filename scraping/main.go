@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/playwright-community/playwright-go"
@@ -104,6 +105,14 @@ nextPart:
 	}
 nextNextPart:
 	Info.Println("User agents:", useragents)
+	// cleaning
+	delete(merged, "ANY")
+	delete(merged, "")
+	for key, value := range merged {
+		if strings.Contains(value[0], "- all") || strings.Contains(value[0], "-All") {
+			delete(merged, key)
+		}
+	}
 	Info.Println("Merged airports:", merged)
 	return useragents, merged
 }

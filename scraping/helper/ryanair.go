@@ -11,7 +11,7 @@ import (
 func RyanairAirports(page playwright.Page) map[string]string {
 	Info.Println("Looking for ryanair airports")
 	airports := make(map[string]string)
-	url := "https://www.ryanair.com/us/en"
+	url := "https://www.ryanair.com/gb/en"
 
 	_, err := page.Goto(url)
 	if err != nil {
@@ -65,12 +65,12 @@ func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		Warning.Println("Ryanair doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight, false
 	}
-	url := "https://www.ryanair.com/us/en"
+	url := "https://www.ryanair.com/gb/en"
 
 	urlQuery := url + "/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=" +
-		fromDate + "&dateIn=" + toDate + "&isConnectedFlight=false&isReturn=true&discount=0&promoCode=&originIata=" +
+		fromDate + "&dateIn=" + toDate + "&isConnectedFlight=false&isReturn=true&discount=0&originIata=" +
 		fromSymbol + "&destinationIata=" + toSymbol + "&tpAdults=1&tpTeens=0&tpChildren=0&tpInfants=0&tpStartDate=" +
-		fromDate + "&tpEndDate=" + toDate + "&tpDiscount=0&tpPromoCode=&tpOriginIata=" + fromSymbol + "&tpDestinationIata=" + toSymbol
+		fromDate + "&tpEndDate=" + toDate + "&tpDiscount=0&&tpOriginIata=" + fromSymbol + "&tpDestinationIata=" + toSymbol
 	Info.Println("Opening page", urlQuery)
 
 	_, err := page.Goto(urlQuery)

@@ -59,7 +59,7 @@ func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 		Warning.Println("Lufthansa doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight, false
 	}
-	url := "https://www.lufthansa.com/us/en"
+	url := "https://www.lufthansa.com/gb/en"
 
 	urlQuery := url + "/flight-search?OriginCode=" + fromSymbol + "&DestinationCode=" + toSymbol + "&DepartureDate=" +
 		fromDate + "T18%3A07%3A58&ReturnDate=" + toDate + "T18%3A07%3A58&Cabin=E&PaxAdults=1"
@@ -80,6 +80,17 @@ func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 	err = page.Click(".form-btn-section .btn-primary")
 	if err != nil {
 		Error.Println("Couldn't find the btn-primary element,", err)
+		return flight, false
+	}
+
+	res, err := page.InnerHTML(".main-content")
+	if err != nil {
+		Error.Println("Couldn't find the main-content element,", err)
+		return flight, false
+	}
+
+	if !strings.Contains(res, "No flights found") {
+		Warning.Println("No flights for the input")
 		return flight, false
 	}
 
@@ -138,14 +149,13 @@ func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 			departureTime := s.Find(".bound-departure-datetime").Text()
 			arrival := s.Find(".bound-arrival-airport-code").Text()
 			arrivalTime := s.Find(".bound-arrival-datetime").Text()
-			// number := s.Find(".flight-select__flight-number").Text()
 			duration := s.Find(".duration-value").Text()
 			price := s.Find(".price-amount").Text()
 			re := regexp.MustCompile(`\d*.\d{2}`)
 			priceMatch := re.FindStringSubmatch(price)
 
 			f := Flight{Airline: LufthansaAirline, Departure: airports[strings.TrimSpace(departure)][0], Arrival: airports[strings.TrimSpace(arrival)][0],
-				DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace("none"),
+				DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: "-",
 				Duration: strings.TrimSpace(duration), Price: priceMatch[0]}
 
 			flight = append(flight, f)

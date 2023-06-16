@@ -137,14 +137,16 @@ func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 			departureTime := s.Find("[ej-date='Flight.LocalDepartureTime']").Text()
 			arrivalTime := s.Find("[ej-date='Flight.LocalArrivalTime']").Text()
 			number := s.Find(".flight-number").Text()
-			duration := "placeholder"
+			duration := "-"
 			price := s.Find(".price-eur").Text()
 
-			f := Flight{Airline: EasyjetAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
-				DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number),
-				Duration: strings.TrimSpace(duration), Price: strings.TrimSpace(price)}
+			if len(departureTime) > 0 {
+				f := Flight{Airline: EasyjetAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
+					DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number),
+					Duration: strings.TrimSpace(duration), Price: strings.TrimSpace(price)}
 
-			flight = append(flight, f)
+				flight = append(flight, f)
+			}
 		})
 	}
 	return flight, true
