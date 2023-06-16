@@ -69,14 +69,14 @@ func EasyjetAirports(page playwright.Page) map[string]string {
 	return airports
 }
 
-func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
+func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) ([]Flight, bool) {
 	Info.Println("Looking for easyjet flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
 	toAirport := airports[toSymbol]
 	if !(SliceContains(fromAirport, EasyjetAirline) && SliceContains(toAirport, EasyjetAirline)) {
 		Warning.Println("Easyjet doesn't fly between", fromSymbol, "and", toSymbol)
-		return flight
+		return flight, false
 	}
 	url := "https://www.easyjet.com"
 
@@ -87,44 +87,44 @@ func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 	_, err := page.Goto(urlQuery)
 	if err != nil {
 		Error.Println("Couldn't open the page,", err)
-		return flight
+		return flight, false
 	}
 
 	err = page.Click("#ensCloseBanner")
 	if err != nil {
 		Error.Println("Couldn't find the ensCloseBanner element,", err)
-		return flight
+		return flight, false
 	}
 
 	page.Click(".drawer-button > button")
 	if err != nil {
 		Error.Println("Couldn't find the drawer-button button element,", err)
-		return flight
+		return flight, false
 	}
 
 	page.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
 	if err != nil {
 		Error.Println("Couldn't find the outbound flight-grid-day element,", err)
-		return flight
+		return flight, false
 	}
 
 	time.Sleep(time.Second)
 	page.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
 	if err != nil {
 		Error.Println("Couldn't find the return flight-grid-day element,", err)
-		return flight
+		return flight, false
 	}
 
 	res, err := page.InnerHTML("body")
 	if err != nil {
 		Error.Println("Couldn't find the body element,", err)
-		return flight
+		return flight, false
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
 		Error.Println("Couldn't create the goquery Document,", err)
-		return flight
+		return flight, false
 	}
 
 	if len(doc.Find(".basket-wrapper").Text()) > 0 {
@@ -147,5 +147,5 @@ func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 			flight = append(flight, f)
 		})
 	}
-	return flight
+	return flight, true
 }

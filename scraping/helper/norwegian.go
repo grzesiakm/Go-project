@@ -63,14 +63,14 @@ func GetMonthDayDateString(inputDate string) (string, string) {
 	return fmt.Sprintf("%d%02d", formatDate.Year(), formatDate.Month()), fmt.Sprintf("%02d", formatDate.Day())
 }
 
-func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
+func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) ([]Flight, bool) {
 	Info.Println("Looking for norwegian flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
 	toAirport := airports[toSymbol]
 	if !(SliceContains(fromAirport, NorwegianAirline) && SliceContains(toAirport, NorwegianAirline)) {
 		Warning.Println("Norwegian doesn't fly between", fromSymbol, "and", toSymbol)
-		return flight
+		return flight, false
 	}
 	url := "https://www.norwegian.com/uk"
 
@@ -84,36 +84,36 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 	_, err := page.Goto(urlQuery)
 	if err != nil {
 		Error.Println("Couldn't open the page,", err)
-		return flight
+		return flight, false
 	}
 
 	err = page.Click("#nas-cookie-consent-accept-all")
 	if err != nil {
 		Error.Println("Couldn't find the nas-cookie-consent-accept-all element,", err)
-		return flight
+		return flight, false
 	}
 
 	res, err := page.InnerHTML("main")
 	if err != nil {
 		Error.Println("Couldn't find the main element,", err)
-		return flight
+		return flight, false
 	}
 
 	if !strings.Contains(res, "return trip") {
 		Warning.Println("No flights for the input")
-		return flight
+		return flight, false
 	}
 
 	res, err = page.InnerHTML(".sectioncontainer")
 	if err != nil {
 		Error.Println("Couldn't find the sectioncontainer element,", err)
-		return flight
+		return flight, false
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
 		Error.Println("Couldn't create the goquery Document,", err)
-		return flight
+		return flight, false
 	}
 
 	doc.Find(".rowinfo1").Each(func(i int, s *goquery.Selection) {
@@ -136,5 +136,5 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 
 		flight = append(flight, f)
 	})
-	return flight
+	return flight, true
 }

@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/playwright-community/playwright-go"
@@ -107,26 +108,25 @@ nextNextPart:
 	return useragents, merged
 }
 
-func GetFlights(browser playwright.Browser, from, to, fromDate, toDate string, useragents []string, airports map[string][]string) Flights {
-	fromSymbol := KeyByValue(airports, from)
-	toSymbol := KeyByValue(airports, to)
-
+func GetFlights(browser playwright.Browser, fromSymbol, toSymbol, fromDate, toDate string, useragents []string, airports map[string][]string) (Flights, bool) {
 	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragents[rand.Intn(len(useragents))])})
 	page, _ := context.NewPage()
 
-	lotFlights := Lot(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	ryanairFlights := Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	easyjetFlights := Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	norwegianFlights := Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	lufthansaFlights := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-
-	flights := append(lotFlights, ryanairFlights...)
-	flights = append(flights, easyjetFlights...)
-	flights = append(flights, norwegianFlights...)
-	flights = append(flights, lufthansaFlights...)
+	lotFlights, lotOk := Lot(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	ryanairFlights, ryanairOk := Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	easyjetFlights, easyjetOk := Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	norwegianFlights, norwegianOk := Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	lufthansaFlights, lufthansaOk := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
 	var airlinesFlights Flights
-	airlinesFlights.Flights = flights
-	return airlinesFlights
+	if lotOk || ryanairOk || easyjetOk || norwegianOk || lufthansaOk {
+		flights := append(lotFlights, ryanairFlights...)
+		flights = append(flights, easyjetFlights...)
+		flights = append(flights, norwegianFlights...)
+		flights = append(flights, lufthansaFlights...)
+		airlinesFlights.Flights = flights
+		return airlinesFlights, true
+	}
+	return airlinesFlights, false
 }
 
 var tmpl *template.Template
@@ -157,7 +157,7 @@ func main() {
 }
 
 func index(writer http.ResponseWriter, _ *http.Request) {
-	err := tmpl.ExecuteTemplate(writer, "index.gohtml", nil)
+	err := tmpl.ExecuteTemplate(writer, "index.gohtml", airports)
 	if err != nil {
 		Error.Println(err)
 		return
@@ -172,9 +172,17 @@ func search(writer http.ResponseWriter, request *http.Request) {
 
 	from := request.FormValue("departure")
 	to := request.FormValue("arrival")
-	fromDate := request.FormValue("departureTime")
-	toDate := request.FormValue("arrivalTime")
-	flights := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
-	Info.Println(flights.ToString())
-	tmpl.ExecuteTemplate(writer, "search.gohtml", flights)
+	fromDate := request.FormValue("start")
+	toDate := request.FormValue("end")
+	Info.Println("Looking for flights between", from, to, "date", fromDate, toDate)
+	flights, ok := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
+	if ok {
+		sort.Slice(flights.Flights, func(i, j int) bool {
+			return flights.Flights[i].Price < flights.Flights[j].Price
+		})
+		Info.Println(flights.ToString())
+		tmpl.ExecuteTemplate(writer, "search.gohtml", flights)
+	} else {
+		tmpl.ExecuteTemplate(writer, "noresults.gohtml", nil)
+	}
 }

@@ -63,14 +63,14 @@ func GetDateString(inputDate string) string {
 	return fmt.Sprintf("%d%02d%d", formatDate.Day(), formatDate.Month(), formatDate.Year())
 }
 
-func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) []Flight {
+func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) ([]Flight, bool) {
 	Info.Println("Looking for lot flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
 	toAirport := airports[toSymbol]
 	if !(SliceContains(fromAirport, LotAirline) && SliceContains(toAirport, LotAirline)) {
 		Warning.Println("Lot doesn't fly between", fromSymbol, "and", toSymbol)
-		return flight
+		return flight, false
 	}
 	url := "https://www.lot.com/us/en"
 
@@ -81,34 +81,34 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 	_, err := page.Goto(urlQuery)
 	if err != nil {
 		Error.Println("Couldn't open the page,", err)
-		return flight
+		return flight, false
 	}
 
 	time.Sleep(time.Second)
 	err = page.Click("#onetrust-accept-btn-handler")
 	if err != nil {
 		Error.Println("Couldn't find the onetrust-accept-btn-handler element,", err)
-		return flight
+		return flight, false
 	}
 
 	time.Sleep(time.Second)
 	err = page.Click(".bookerFlight__submit-button")
 	if err != nil {
 		Error.Println("Couldn't find the bookerFlight__submit-button element,", err)
-		return flight
+		return flight, false
 	}
 
 	time.Sleep(time.Second)
 	res, err := page.InnerHTML("#availability-content")
 	if err != nil {
 		Error.Println("Couldn't find the availability-content element,", err)
-		return flight
+		return flight, false
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
 		Error.Println("Couldn't create the goquery Document,", err)
-		return flight
+		return flight, false
 	}
 
 	doc.Find(".flights-table-panel__flight__content").Each(func(i int, s *goquery.Selection) {
@@ -130,5 +130,5 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 			flight = append(flight, f)
 		}
 	})
-	return flight
+	return flight, true
 }
