@@ -93,9 +93,9 @@ func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		return flight, false
 	}
 
-	err = page.Click("flight-card-new")
+	err = page.Click("flight-list")
 	if err != nil {
-		Error.Println("Couldn't find the flight-card-new element,", err)
+		Error.Println("Couldn't find the flight-list element,", err)
 		return flight, false
 	}
 
