@@ -87,13 +87,27 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 		return flight, false
 	}
 
-	err = page.Click(".cookie-consent__footer-buttons > button:first-child")
+	res, err := page.InnerHTML("body")
 	if err != nil {
-		Error.Println("Couldn't find the cookie-consent__footer-buttons element,", err)
+		Error.Println("Couldn't find the body element,", err)
 		return flight, false
 	}
 
-	res, err := page.InnerHTML("main")
+	if strings.Contains(res, "nas-element-cookie-consent__accept-all-button") {
+		err = page.Click("#nas-cookie-consent-accept-all")
+		if err != nil {
+			Error.Println("Couldn't find the nas-cookie-consent-accept-all element,", err)
+			return flight, false
+		}
+	} else {
+		err = page.Click(".cookie-consent__accept-all-button")
+		if err != nil {
+			Error.Println("Couldn't find the cookie-consent__accept-all-button element,", err)
+			return flight, false
+		}
+	}
+
+	res, err = page.InnerHTML("main")
 	if err != nil {
 		Error.Println("Couldn't find the main element,", err)
 		return flight, false

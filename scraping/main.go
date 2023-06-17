@@ -144,6 +144,8 @@ func GetFlights(browser playwright.Browser, fromSymbol, toSymbol, fromDate, toDa
 	page, _ = context.NewPage()
 	lufthansaFlights, lufthansaOk := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports, currencies)
 	page.Close()
+	context.ClearCookies()
+	context.Close()
 	var airlinesFlights Flights
 	if lotOk || ryanairOk || easyjetOk || norwegianOk || lufthansaOk {
 		flights := append(lotFlights, ryanairFlights...)

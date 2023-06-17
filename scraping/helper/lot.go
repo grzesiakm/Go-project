@@ -63,6 +63,11 @@ func GetDateString(inputDate string) string {
 	return fmt.Sprintf("%d%02d%d", formatDate.Day(), formatDate.Month(), formatDate.Year())
 }
 
+func GetDateString2(inputDate string) string {
+	formatDate, _ := time.Parse("2006-01-02", inputDate)
+	return formatDate.Format("02 January 2006")
+}
+
 func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) ([]Flight, bool) {
 	Info.Println("Looking for lot flights")
 	flight := make([]Flight, 0)
@@ -116,6 +121,13 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 		return flight, false
 	}
 
+	fromAvailable := strings.Contains(res, GetDateString2(fromDate))
+	toAvailable := strings.Contains(res, GetDateString2(toDate))
+	if !(fromAvailable || toAvailable) {
+		Warning.Println("No flights for the input dates")
+		return flight, false
+	}
+
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
 		Error.Println("Couldn't create the goquery Document,", err)
@@ -130,15 +142,16 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 		number := s.Find(".flights-table-panel__flight__content__info__details__number").Text()
 		duration := s.Find(".VAB__flight__info__time").Text()
 		price := s.Find("[data-cabinname='economy'] .ratePanel__element__wrapper__link__bordered__price__amount").Text()
-		if len(departure) > 0 {
+		if len(price) > 0 {
 			re := regexp.MustCompile(`\d{2}:\d{2}`)
 			departureTimeMatch := re.FindStringSubmatch(departureTime)
 			arrivalTimeMatch := re.FindStringSubmatch(arrivalTime)
-
-			f := Flight{Airline: LotAirline, Departure: airports[strings.TrimSpace(departure)][0], Arrival: airports[strings.TrimSpace(arrival)][0],
-				DepartureTime: departureTimeMatch[0], ArrivalTime: arrivalTimeMatch[0], Number: strings.Join(strings.Fields(number), ", "),
-				Duration: GetCommonDurationFormat(strings.TrimSpace(duration)), Price: ConvertToFloat32(strings.TrimSpace(price))}
-			flight = append(flight, f)
+			if (fromAvailable && strings.TrimSpace(departure) == fromSymbol) || (toAvailable && strings.TrimSpace(departure) == toSymbol) {
+				f := Flight{Airline: LotAirline, Departure: airports[strings.TrimSpace(departure)][0], Arrival: airports[strings.TrimSpace(arrival)][0],
+					DepartureTime: departureTimeMatch[0], ArrivalTime: arrivalTimeMatch[0], Number: strings.Join(strings.Fields(number), ", "),
+					Duration: GetCommonDurationFormat(strings.TrimSpace(duration)), Price: ConvertToFloat32(strings.TrimSpace(price))}
+				flight = append(flight, f)
+			}
 		}
 	})
 	return flight, true
