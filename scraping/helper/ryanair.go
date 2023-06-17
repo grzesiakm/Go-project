@@ -27,9 +27,15 @@ func RyanairAirports(page playwright.Page) map[string]string {
 		return airports
 	}
 
-	err = page.Click("#input-button__destination")
+	err = page.Click("#input-button__departure")
 	if err != nil {
-		Error.Println("Couldn't find the input-button__destination element,", err)
+		Error.Println("Couldn't find the input-button__departure element,", err)
+		return airports
+	}
+
+	err = page.Click(".list__clear-selection")
+	if err != nil {
+		Error.Println("Couldn't find the list__clear-selection element,", err)
 		return airports
 	}
 
@@ -87,6 +93,12 @@ func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		return flight, false
 	}
 
+	err = page.Click("flight-card-new")
+	if err != nil {
+		Error.Println("Couldn't find the flight-card-new element,", err)
+		return flight, false
+	}
+
 	res, err := page.InnerHTML(".journeys-wrapper")
 	if err != nil {
 		Error.Println("Couldn't find the journeys-wrapper element,", err)
@@ -108,7 +120,7 @@ func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		duration := s.Find("[data-ref='flight_duration']").Text()
 		price := s.Find(".flight-card-summary__new-value flights-price-simple").Text()
 		price = strings.ReplaceAll(price, "\u0024", "")
-		value, err := strconv.ParseFloat(strings.ReplaceAll(price, ",", "."), 32)
+		value, err := strconv.ParseFloat(strings.TrimSpace(price), 32)
 		if err == nil {
 			priceVal := currencies["USD"] * value
 			f := Flight{Airline: RyanairAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
