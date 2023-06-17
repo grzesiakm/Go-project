@@ -17,6 +17,7 @@ W katalogu **scraping** wykonaj poniższe komendy:
 - `go build`
 - `go run github.com/playwright-community/playwright-go/cmd/playwright install --with-deps`
 - `go run main.go` lub uruchom stworzony plik wykonywalny (np. main.exe)
+
 Następnie w przeglądarce otwórz http://127.0.0.1:8080/
  
 ## Zespół
