@@ -78,72 +78,95 @@ func Easyjet(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		Warning.Println("Easyjet doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight, false
 	}
-	url := "https://www.easyjet.com"
+	url := "https://worldwide.easyjet.com/en"
 
-	urlQuery := url + "/deeplink?lang=EN&dep=" + fromSymbol + "&dest=" + toSymbol + "&dd=" + fromDate + "&rd=" +
-		toDate + "&apax=1&cpax=0&ipax=0&SearchFrom=SearchPod2_/en/&isOneWay=off"
-	Info.Println("Opening page", urlQuery)
+	urlQueryFrom := url + "/search?origins=" + fromSymbol + "&destinations=" + toSymbol + "&departureDate=" + fromDate + "&returnDate=&isOneWay=true&currency=GBP&residency=GB&utm_source=easyjet_search_pod&utm_medium=&utm_campaign=&adult=18&child=&infant="
 
-	_, err := page.Goto(urlQuery)
+	urlQueryTo := url + "/search?origins=" + toSymbol + "&destinations=" + fromSymbol + "&departureDate=" + toDate + "&returnDate=&isOneWay=true&currency=GBP&residency=GB&utm_source=easyjet_search_pod&utm_medium=&utm_campaign=&adult=18&child=&infant="
+	Info.Println("Opening page", urlQueryFrom, urlQueryTo)
+
+	resp, err := page.Goto(urlQueryFrom)
 	if err != nil {
-		Error.Println("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err, resp)
 		return flight, false
 	}
 
-	err = page.Click("#ensCloseBanner")
+	err = page.Click("[data-testid='uc-accept-all-button']")
 	if err != nil {
-		Error.Println("Couldn't find the ensCloseBanner element,", err)
+		Error.Println("Couldn't find the uc-accept-all-button element,", err)
 		return flight, false
 	}
 
-	page.Click(".drawer-button > button")
+	res1, err := page.InnerHTML(".css-1k6o6fq")
 	if err != nil {
-		Error.Println("Couldn't find the drawer-button button element,", err)
+		Error.Println("Couldn't find the css-1k6o6fq element,", err)
 		return flight, false
 	}
 
-	page.Click(".outbound .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
+	resp, err = page.Goto(urlQueryTo)
 	if err != nil {
-		Error.Println("Couldn't find the outbound flight-grid-day element,", err)
+		Error.Println("Couldn't open the page,", err, resp)
 		return flight, false
 	}
 
 	time.Sleep(time.Second)
-	page.Click(".return .flight-grid-slider > div:nth-child(2) .flight-grid-day div ul")
+	res2, err := page.InnerHTML(".css-1k6o6fq")
 	if err != nil {
-		Error.Println("Couldn't find the return flight-grid-day element,", err)
+		Error.Println("Couldn't find the css-1k6o6fq element,", err)
 		return flight, false
 	}
+	resSlice := []string{res1, res2}
+	for _, res := range resSlice {
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+		if err != nil {
+			Error.Println("Couldn't create the goquery Document,", err)
+			return flight, false
+		}
 
-	res, err := page.InnerHTML("body")
-	if err != nil {
-		Error.Println("Couldn't find the body element,", err)
-		return flight, false
-	}
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-	if err != nil {
-		Error.Println("Couldn't create the goquery Document,", err)
-		return flight, false
-	}
-
-	if len(doc.Find(".basket-wrapper").Text()) > 0 {
-		doc.Find(".funnel-basket-flight").Each(func(i int, s *goquery.Selection) {
-			route := s.Find(".route-text").Text()
-			re := regexp.MustCompile(`(.*) to (.*)`)
-			routeMatch := re.FindStringSubmatch(route)
-			departure := routeMatch[1]
-			arrival := routeMatch[2]
-			departureTime := s.Find("[ej-date='Flight.LocalDepartureTime']").Text()
-			arrivalTime := s.Find("[ej-date='Flight.LocalArrivalTime']").Text()
-			number := s.Find(".flight-number").Text()
-			duration := "-"
-			price := s.Find(".price-eur").Text()
-
-			if len(departureTime) > 0 {
+		doc.Find(".css-spi7mf.eoq8clo1").Each(func(i int, s *goquery.Selection) {
+			departure := ""
+			arrival := ""
+			departureTime := ""
+			arrivalTime := ""
+			s.Find(".css-12y62xy.e40v1ey3").Each(func(j int, s2 *goquery.Selection) {
+				airport := s2.Text()
+				re := regexp.MustCompile(`(\w*) \(`)
+				airportMatch := re.FindStringSubmatch(airport)
+				if len(airportMatch) > 0 {
+					if j == 0 {
+						departure = airportMatch[1]
+					} else {
+						arrival = airportMatch[1]
+					}
+				}
+			})
+			s.Find(".css-1lbgppu.e40v1ey1").Each(func(j int, s2 *goquery.Selection) {
+				if j == 0 {
+					departureTime = s2.Text()
+				} else {
+					arrivalTime = s2.Text()
+				}
+			})
+			number := make([]string, 0)
+			s.Find(".flightNumber").Each(func(j int, s2 *goquery.Selection) {
+				number = append(number, s2.Text())
+			})
+			duration := s.Find(".css-sx8r9.edc9gsy2").Text()
+			re := regexp.MustCompile(`Journey duration: (.*)`)
+			durationMatch := re.FindStringSubmatch(duration)
+			price := s.Find(".ejzj98p8.css-x70eh0.eevppah0").Text()
+			price = strings.ReplaceAll(price, "\u00a0", " ")
+			price = strings.ReplaceAll(price, "\u00a3", " ")
+			priceSlice := strings.Fields(price)
+			if len(priceSlice) > 1 {
+				price = priceSlice[1]
+			} else if len(priceSlice) == 1 {
+				price = priceSlice[0]
+			}
+			if len(departure) > 0 {
 				f := Flight{Airline: EasyjetAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
-					DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number),
-					Duration: strings.TrimSpace(duration), Price: strings.TrimSpace(price)}
+					DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.Join(number, ", "),
+					Duration: GetCommonDurationFormat(strings.TrimSpace(durationMatch[1])), Price: ConvertToFloat32(price)}
 
 				flight = append(flight, f)
 			}

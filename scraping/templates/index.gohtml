@@ -12,8 +12,6 @@
         integrity="sha512-LsnSViqQyaXpD4mBBdRYeP6sRwJiJveh2ZIbW41EBrNmKxgr/LFZIiWT6yr+nycvhvauz8c2nYMhrP80YhG7Cw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker.min.css"
         integrity="sha512-34s5cpvaNG3BknEWSuOncX28vz97bRI59UnVtEEpFX536A7BtZSJHsDyFoCl8S7Dt2TPzcrCEoHBGeM4SUBDBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.2.0/choices.min.js"
-        integrity="sha512-OrRY3yVhfDckdPBIjU2/VXGGDjq3GPcnILWTT39iYiuV6O3cEcAxkgCBVR49viQ99vBFeu+a6/AoFAkNHgFteg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         html, body {
           height: 100%;
@@ -58,17 +56,6 @@
                 startDate: todaysDate.toISOString().split('T')[0],
             });
         });
-
-        const sorting = document.querySelector('.selectpicker');
-        const commentSorting = document.querySelector('.selectpicker');
-        const sortingchoices = new Choices(sorting, {
-            placeholder: false,
-            itemSelectText: ''
-        });
-        let sortingClass = sorting.getAttribute('class');
-        window.onload = function () {
-            sorting.parentElement.setAttribute('class', sortingClass);
-        }
     </script>
     <title>Web Scrapper - Cheapest Flights</title>
 </head>
@@ -79,15 +66,15 @@
 
         <label for="from" class="sr-only">Departure</label>
         <select class="selectpicker form-control" name="departure" id="from" placeholder="Departure" required autofocus>
-            {{ range $key, $value := .}}
-                <option value="{{ $key }}">{{ index $value 0 }}</option>
+            {{ range $item := .}}
+                <option value="{{ $item.Key }}">{{ $item.Value }}</option>
             {{ end}}
         </select>
 
         <label for="to" class="sr-only">Arrival</label>
         <select class="selectpicker form-control" name="arrival" id="to" placeholder="Arrival" required autofocus>
-            {{ range $key, $value := .}}
-                <option value="{{ $key }}">{{ index $value 0 }}</option>
+            {{ range $item := .}}
+                <option value="{{ $item.Key }}">{{ $item.Value }}</option>
             {{ end}}
         </select>
 

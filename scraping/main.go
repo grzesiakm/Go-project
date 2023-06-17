@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"fmt"
 	"html/template"
 	"log"
 	. "main/helper"
@@ -26,7 +27,7 @@ func MergeMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 	return merged
 }
 
-func GetStartInfo(browser playwright.Browser) ([]string, map[string][]string) {
+func GetStartInfo(browser playwright.Browser) ([]string, map[string][]string, map[string]float64) {
 	log.Println("Starting playwright")
 	useragents := make([]string, 0)
 	decodeFile, err := os.Open("useragents.gob")
@@ -63,11 +64,19 @@ nextPart:
 		context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragent)})
 		page, _ := context.NewPage()
 		lotAirports := LotAirports(page)
+		page.Close()
+		page, _ = context.NewPage()
 		ryanairAirports := RyanairAirports(page)
+		page.Close()
+		page, _ = context.NewPage()
 		easyjetAirports := EasyjetAirports(page)
+		page.Close()
+		page, _ = context.NewPage()
 		norwegianAirports := NorwegianAirports(page)
+		page.Close()
+		page, _ = context.NewPage()
 		lufthansaAirports := LufthansaAirports(page)
-
+		page.Close()
 		log.Println("Merging airports")
 		lr := MergeMaps(lotAirports, ryanairAirports)
 		lre := MergeMaps(lr, easyjetAirports)
@@ -104,6 +113,7 @@ nextPart:
 		encodeFile.Close()
 	}
 nextNextPart:
+	currencies := Currency(browser)
 	Info.Println("User agents:", useragents)
 	// cleaning
 	delete(merged, "ANY")
@@ -114,18 +124,26 @@ nextNextPart:
 		}
 	}
 	Info.Println("Merged airports:", merged)
-	return useragents, merged
+	return useragents, merged, currencies
 }
 
 func GetFlights(browser playwright.Browser, fromSymbol, toSymbol, fromDate, toDate string, useragents []string, airports map[string][]string) (Flights, bool) {
 	context, _ := browser.NewContext(playwright.BrowserNewContextOptions{UserAgent: playwright.String(useragents[rand.Intn(len(useragents))])})
 	page, _ := context.NewPage()
-
 	lotFlights, lotOk := Lot(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	ryanairFlights, ryanairOk := Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	page.Close()
+	page, _ = context.NewPage()
+	ryanairFlights, ryanairOk := Ryanair(page, fromSymbol, toSymbol, fromDate, toDate, airports, currencies)
+	page.Close()
+	page, _ = context.NewPage()
 	easyjetFlights, easyjetOk := Easyjet(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	page.Close()
+	page, _ = context.NewPage()
 	norwegianFlights, norwegianOk := Norwegian(page, fromSymbol, toSymbol, fromDate, toDate, airports)
-	lufthansaFlights, lufthansaOk := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports)
+	page.Close()
+	page, _ = context.NewPage()
+	lufthansaFlights, lufthansaOk := Lufthansa(page, fromSymbol, toSymbol, fromDate, toDate, airports, currencies)
+	page.Close()
 	var airlinesFlights Flights
 	if lotOk || ryanairOk || easyjetOk || norwegianOk || lufthansaOk {
 		flights := append(lotFlights, ryanairFlights...)
@@ -143,6 +161,7 @@ var pw *playwright.Playwright
 var browser playwright.Browser
 var useragents []string
 var airports map[string][]string
+var currencies map[string]float64
 
 func init() {
 	rand.Seed(time.Now().Unix())
@@ -152,7 +171,7 @@ func init() {
 	pw, _ = playwright.Run()
 	browser, _ = pw.Firefox.Launch(CustomFirefoxOptions)
 	tmpl = template.Must(template.ParseGlob("templates/*.gohtml"))
-	useragents, airports = GetStartInfo(browser)
+	useragents, airports, currencies = GetStartInfo(browser)
 }
 
 // go run main.go
@@ -166,7 +185,8 @@ func main() {
 }
 
 func index(writer http.ResponseWriter, _ *http.Request) {
-	err := tmpl.ExecuteTemplate(writer, "index.gohtml", airports)
+	sortedAirports := SortMap(airports)
+	err := tmpl.ExecuteTemplate(writer, "index.gohtml", sortedAirports)
 	if err != nil {
 		Error.Println(err)
 		return
@@ -185,13 +205,17 @@ func search(writer http.ResponseWriter, request *http.Request) {
 	toDate := request.FormValue("end")
 	Info.Println("Looking for flights between", from, to, "date", fromDate, toDate)
 	flights, ok := GetFlights(browser, from, to, fromDate, toDate, useragents, airports)
+	inputData := fmt.Sprintf("%s - %s, %s - %s", from, to, fromDate, toDate)
 	if ok {
 		sort.Slice(flights.Flights, func(i, j int) bool {
 			return flights.Flights[i].Price < flights.Flights[j].Price
 		})
 		Info.Println(flights.ToString())
-		tmpl.ExecuteTemplate(writer, "search.gohtml", flights)
+		tmpl.ExecuteTemplate(writer, "search.gohtml", struct {
+			Results   Flights
+			InputData string
+		}{flights, inputData})
 	} else {
-		tmpl.ExecuteTemplate(writer, "noresults.gohtml", nil)
+		tmpl.ExecuteTemplate(writer, "noresults.gohtml", inputData)
 	}
 }

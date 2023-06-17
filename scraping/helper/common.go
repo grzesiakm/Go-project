@@ -3,8 +3,12 @@ package helper
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/playwright-community/playwright-go"
 )
@@ -18,18 +22,23 @@ const (
 )
 
 type Flight struct {
-	Airline       string `json:"Airline"`
-	Departure     string `json:"Departure"`
-	Arrival       string `json:"Arrival"`
-	DepartureTime string `json:"DepartureTime"`
-	ArrivalTime   string `json:"ArrivalTime"`
-	Number        string `json:"Number"`
-	Duration      string `json:"Duration"`
-	Price         string `json:"Price"`
+	Airline       string  `json:"Airline"`
+	Departure     string  `json:"Departure"`
+	Arrival       string  `json:"Arrival"`
+	DepartureTime string  `json:"DepartureTime"`
+	ArrivalTime   string  `json:"ArrivalTime"`
+	Number        string  `json:"Number"`
+	Duration      string  `json:"Duration"`
+	Price         float32 `json:"Price"`
 }
 
 type Flights struct {
 	Flights []Flight
+}
+
+type KV struct {
+	Key   string
+	Value string
 }
 
 func (f Flights) ToString() string {
@@ -59,6 +68,42 @@ func KeyByValue(m map[string][]string, value string) string {
 		}
 	}
 	return ""
+}
+
+func SortMap(m map[string][]string) []KV {
+	var sortedMap []KV
+	for k, v := range m {
+		sortedMap = append(sortedMap, KV{k, v[0]})
+	}
+
+	sort.Slice(sortedMap, func(i, j int) bool {
+		return sortedMap[i].Value < sortedMap[j].Value
+	})
+
+	return sortedMap
+}
+
+func ConvertToFloat32(s string) float32 {
+	if strings.Contains(s, ".") && strings.Contains(s, ",") {
+		s = strings.ReplaceAll(s, ",", "")
+	}
+	value, err := strconv.ParseFloat(strings.ReplaceAll(s, ",", "."), 32)
+	if err == nil {
+		return float32(math.Round(value*100) / 100)
+	}
+	return 0
+}
+
+func GetCommonDurationFormat(s string) string {
+	if strings.Contains(s, ":") {
+		sli := strings.Split(s, ":")
+		for i, r := range sli[1] {
+			if !unicode.IsDigit(r) {
+				return fmt.Sprintf("%sh %sm", sli[0], sli[1][:i])
+			}
+		}
+	}
+	return s
 }
 
 func SaveToFile(filename, content string) {

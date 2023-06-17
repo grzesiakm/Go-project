@@ -1,8 +1,11 @@
 package helper
 
 import (
+	"math"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/playwright-community/playwright-go"
@@ -50,7 +53,7 @@ func LufthansaAirports(page playwright.Page) map[string]string {
 	return airports
 }
 
-func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) ([]Flight, bool) {
+func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string, currencies map[string]float64) ([]Flight, bool) {
 	Info.Println("Looking for lufthansa flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
@@ -65,9 +68,9 @@ func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 		fromDate + "T18%3A07%3A58&ReturnDate=" + toDate + "T18%3A07%3A58&Cabin=E&PaxAdults=1"
 	Info.Println("Opening page", urlQuery)
 
-	_, err := page.Goto(urlQuery)
+	resp, err := page.Goto(urlQuery)
 	if err != nil {
-		Error.Println("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err, resp)
 		return flight, false
 	}
 
@@ -83,17 +86,22 @@ func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 		return flight, false
 	}
 
-	res, err := page.InnerHTML(".main-content")
-	if err != nil {
-		Error.Println("Couldn't find the main-content element,", err)
-		return flight, false
-	}
+	for i := 0; i < 15; i++ {
+		time.Sleep(time.Second)
+		res, err := page.InnerHTML(".main-content")
+		if err != nil {
+			Error.Println("Couldn't find the main-content element,", err)
+			return flight, false
+		}
 
-	if !strings.Contains(res, "No flights found") {
-		Warning.Println("No flights for the input")
-		return flight, false
+		if strings.Contains(res, "No flights found") {
+			Warning.Println("No flights for the input")
+			return flight, false
+		} else if strings.Contains(res, "sorting-filtering-area") {
+			goto nextPart
+		}
 	}
-
+nextPart:
 	err = page.Click(".sorting-filtering-area")
 	if err != nil {
 		Error.Println("Couldn't find the sorting-filtering-area element,", err)
@@ -151,14 +159,15 @@ func Lufthansa(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 			arrivalTime := s.Find(".bound-arrival-datetime").Text()
 			duration := s.Find(".duration-value").Text()
 			price := s.Find(".price-amount").Text()
-			re := regexp.MustCompile(`\d*.\d{2}`)
-			priceMatch := re.FindStringSubmatch(price)
-
-			f := Flight{Airline: LufthansaAirline, Departure: airports[strings.TrimSpace(departure)][0], Arrival: airports[strings.TrimSpace(arrival)][0],
-				DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: "-",
-				Duration: strings.TrimSpace(duration), Price: priceMatch[0]}
-
-			flight = append(flight, f)
+			priceCurrency := s.Find(".price-currency-code").Text()
+			value, err := strconv.ParseFloat(strings.ReplaceAll(price, ",", ""), 32)
+			if err == nil {
+				priceVal := currencies[strings.TrimSpace(priceCurrency)] * value
+				f := Flight{Airline: LufthansaAirline, Departure: airports[strings.TrimSpace(departure)][0], Arrival: airports[strings.TrimSpace(arrival)][0],
+					DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: "-",
+					Duration: GetCommonDurationFormat(strings.TrimSpace(duration)), Price: float32(math.Round(priceVal*100) / 100)}
+				flight = append(flight, f)
+			}
 		})
 	}
 	return flight, true

@@ -78,9 +78,9 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 		GetDateString(fromDate) + "&class=E&adults=1&returnDate=" + GetDateString(toDate)
 	Info.Println("Opening page", urlQuery)
 
-	_, err := page.Goto(urlQuery)
+	resp, err := page.Goto(urlQuery)
 	if err != nil {
-		Error.Println("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err, resp)
 		return flight, false
 	}
 
@@ -105,7 +105,7 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 		return flight, false
 	}
 
-	if !strings.Contains(res, "unavailable on selected") {
+	if strings.Contains(res, "unavailable on selected") {
 		Warning.Println("No flights for the input")
 		return flight, false
 	}
@@ -129,7 +129,7 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 		arrivalTime := s.Find(".flights-table-panel__flight__content__info__direction--arrival").Text()
 		number := s.Find(".flights-table-panel__flight__content__info__details__number").Text()
 		duration := s.Find(".VAB__flight__info__time").Text()
-		price := s.Find(".ratePanel__element__wrapper__link__bordered__price").Text()
+		price := s.Find("[data-cabinname='economy'] .ratePanel__element__wrapper__link__bordered__price__amount").Text()
 		if len(departure) > 0 {
 			re := regexp.MustCompile(`\d{2}:\d{2}`)
 			departureTimeMatch := re.FindStringSubmatch(departureTime)
@@ -137,7 +137,7 @@ func Lot(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, ai
 
 			f := Flight{Airline: LotAirline, Departure: airports[strings.TrimSpace(departure)][0], Arrival: airports[strings.TrimSpace(arrival)][0],
 				DepartureTime: departureTimeMatch[0], ArrivalTime: arrivalTimeMatch[0], Number: strings.Join(strings.Fields(number), ", "),
-				Duration: strings.TrimSpace(duration), Price: strings.Join(strings.Fields(price)[:2], " ")}
+				Duration: GetCommonDurationFormat(strings.TrimSpace(duration)), Price: ConvertToFloat32(strings.TrimSpace(price))}
 			flight = append(flight, f)
 		}
 	})

@@ -1,7 +1,9 @@
 package helper
 
 import (
+	"math"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -11,7 +13,7 @@ import (
 func RyanairAirports(page playwright.Page) map[string]string {
 	Info.Println("Looking for ryanair airports")
 	airports := make(map[string]string)
-	url := "https://www.ryanair.com/gb/en"
+	url := "https://www.ryanair.com/us/en"
 
 	_, err := page.Goto(url)
 	if err != nil {
@@ -56,7 +58,7 @@ func RyanairAirports(page playwright.Page) map[string]string {
 	return airports
 }
 
-func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string) ([]Flight, bool) {
+func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string, airports map[string][]string, currencies map[string]float64) ([]Flight, bool) {
 	Info.Println("Looking for ryanair flights")
 	flight := make([]Flight, 0)
 	fromAirport := airports[fromSymbol]
@@ -65,7 +67,7 @@ func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		Warning.Println("Ryanair doesn't fly between", fromSymbol, "and", toSymbol)
 		return flight, false
 	}
-	url := "https://www.ryanair.com/gb/en"
+	url := "https://www.ryanair.com/us/en"
 
 	urlQuery := url + "/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=" +
 		fromDate + "&dateIn=" + toDate + "&isConnectedFlight=false&isReturn=true&discount=0&originIata=" +
@@ -73,9 +75,9 @@ func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		fromDate + "&tpEndDate=" + toDate + "&tpDiscount=0&&tpOriginIata=" + fromSymbol + "&tpDestinationIata=" + toSymbol
 	Info.Println("Opening page", urlQuery)
 
-	_, err := page.Goto(urlQuery)
+	resp, err := page.Goto(urlQuery)
 	if err != nil {
-		Error.Println("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err, resp)
 		return flight, false
 	}
 
@@ -105,12 +107,15 @@ func Ryanair(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate string
 		number := s.Find(".flight-info__middle-block .card-flight-num__content").Text()
 		duration := s.Find("[data-ref='flight_duration']").Text()
 		price := s.Find(".flight-card-summary__new-value flights-price-simple").Text()
-
-		f := Flight{Airline: RyanairAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
-			DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number),
-			Duration: strings.TrimSpace(duration), Price: strings.TrimSpace(price)}
-
-		flight = append(flight, f)
+		price = strings.ReplaceAll(price, "\u0024", "")
+		value, err := strconv.ParseFloat(strings.ReplaceAll(price, ",", "."), 32)
+		if err == nil {
+			priceVal := currencies["USD"] * value
+			f := Flight{Airline: RyanairAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
+				DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.TrimSpace(number),
+				Duration: GetCommonDurationFormat(strings.TrimSpace(duration)), Price: float32(math.Round(priceVal*100) / 100)}
+			flight = append(flight, f)
+		}
 	})
 	return flight, true
 }

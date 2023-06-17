@@ -81,9 +81,9 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 		fromSymbol + "&D_Month=" + fromYearMonth + "&D_Day=" + fromDay + "&R_Month=" + toYearMonth + "&R_Day=" + toDay + "&IncludeTransit=true&TripType=2"
 	Info.Println("Opening page", urlQuery)
 
-	_, err := page.Goto(urlQuery)
+	resp, err := page.Goto(urlQuery)
 	if err != nil {
-		Error.Println("Couldn't open the page,", err)
+		Error.Println("Couldn't open the page,", err, resp)
 		return flight, false
 	}
 
@@ -122,19 +122,21 @@ func Norwegian(page playwright.Page, fromSymbol, toSymbol, fromDate, toDate stri
 		arrival := rowinfo2.Find(".arrdest").Text()
 		departureTime := s.Find(".depdest").Text()
 		arrivalTime := s.Find(".arrdest").Text()
-		number, _ := s.Find(".inputselect .standardlowfare input .hidden").Attr("value")
-		re := regexp.MustCompile(`(\w[0-9]{5})`)
+		number, _ := s.Find(".inputselect.standardlowfare [type='radio']").Attr("value")
+		re := regexp.MustCompile(`([A-Z]{1,2}[0-9]{3,5})`)
 		numberMatch := re.FindStringSubmatch(number)
 		duration := rowinfo2.Find(".duration").Text()
 		re = regexp.MustCompile(`Duration: (.*)`)
 		durationMatch := re.FindStringSubmatch(duration)
 		price := s.Find(".standardlowfare [title='GBP']").Text()
 
-		f := Flight{Airline: NorwegianAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
-			DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.Join(numberMatch[:], ", "),
-			Duration: durationMatch[1], Price: strings.TrimSpace(price)}
+		if len(price) > 0 {
+			f := Flight{Airline: NorwegianAirline, Departure: strings.TrimSpace(departure), Arrival: strings.TrimSpace(arrival),
+				DepartureTime: strings.TrimSpace(departureTime), ArrivalTime: strings.TrimSpace(arrivalTime), Number: strings.Join(numberMatch[:], ", "),
+				Duration: GetCommonDurationFormat(durationMatch[1]), Price: ConvertToFloat32(strings.TrimSpace(price))}
 
-		flight = append(flight, f)
+			flight = append(flight, f)
+		}
 	})
 	return flight, true
 }
